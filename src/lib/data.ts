@@ -1,0 +1,460 @@
+import { randomUUID } from "node:crypto";
+import type {
+  AssignedProgram,
+  CategoryType,
+  Jury,
+  LiveScore,
+  Program,
+  ResultRecord,
+  SectionType,
+  Student,
+  Team,
+} from "./types";
+import { connectDB } from "./db";
+import {
+  ApprovedResultModel,
+  AssignedProgramModel,
+  JuryModel,
+  LiveScoreModel,
+  PendingResultModel,
+  ProgramModel,
+  StudentModel,
+  TeamModel,
+} from "./models";
+
+let seedPromise: Promise<void> | null = null;
+
+async function seedCollection<T>(
+  count: number,
+  insertFn: () => Promise<T>,
+): Promise<void> {
+  if (count === 0) {
+    await insertFn();
+  }
+}
+
+async function seedDatabase() {
+  await connectDB();
+
+  const [teamCount, studentCount, programCount, juryCount, liveScoreCount, assignmentCount] =
+    await Promise.all([
+      TeamModel.countDocuments(),
+      StudentModel.countDocuments(),
+      ProgramModel.countDocuments(),
+      JuryModel.countDocuments(),
+      LiveScoreModel.countDocuments(),
+      AssignedProgramModel.countDocuments(),
+    ]);
+
+  await seedCollection(teamCount, async () => {
+    await TeamModel.insertMany(defaultTeams);
+  });
+
+  await seedCollection(liveScoreCount, async () => {
+    await LiveScoreModel.insertMany(
+      defaultTeams.map((team) => ({
+        team_id: team.id,
+        total_points: team.total_points,
+      })),
+    );
+  });
+
+  await seedCollection(studentCount, async () => {
+    await StudentModel.insertMany(defaultStudents);
+  });
+
+  await seedCollection(programCount, async () => {
+    await ProgramModel.insertMany(defaultPrograms);
+  });
+
+  await seedCollection(juryCount, async () => {
+    await JuryModel.insertMany(defaultJury);
+  });
+
+  await seedCollection(assignmentCount, async () => {
+    await AssignedProgramModel.insertMany(defaultAssignments);
+  });
+}
+
+async function ensureSeedData() {
+  if (!seedPromise) {
+    seedPromise = seedDatabase();
+  }
+  await seedPromise;
+}
+
+function normalize<T>(docs: T[]): T[] {
+  return docs.map((doc) => JSON.parse(JSON.stringify(doc)));
+}
+
+export async function getTeams(): Promise<Team[]> {
+  await ensureSeedData();
+  const teams = await TeamModel.find().lean<Team[]>();
+  return normalize(teams);
+}
+
+export async function getLiveScores(): Promise<LiveScore[]> {
+  await ensureSeedData();
+  const scores = await LiveScoreModel.find().lean<LiveScore[]>();
+  return normalize(scores);
+}
+
+export async function getStudents(): Promise<Student[]> {
+  await ensureSeedData();
+  const students = await StudentModel.find().lean<Student[]>();
+  return normalize(students);
+}
+
+export async function getPrograms(): Promise<Program[]> {
+  await ensureSeedData();
+  const programs = await ProgramModel.find().lean<Program[]>();
+  return normalize(programs);
+}
+
+export async function getJuries(): Promise<Jury[]> {
+  await ensureSeedData();
+  const juries = await JuryModel.find().lean<Jury[]>();
+  return normalize(juries);
+}
+
+export async function getAssignments(): Promise<AssignedProgram[]> {
+  await ensureSeedData();
+  const assignments = await AssignedProgramModel.find().lean<AssignedProgram[]>();
+  return normalize(assignments);
+}
+
+export async function getPendingResults(): Promise<ResultRecord[]> {
+  await ensureSeedData();
+  const results = await PendingResultModel.find().lean<ResultRecord[]>();
+  return normalize(results);
+}
+
+export async function getApprovedResults(): Promise<ResultRecord[]> {
+  await ensureSeedData();
+  const results = await ApprovedResultModel.find().lean<ResultRecord[]>();
+  return normalize(results);
+}
+
+export async function createProgram(input: Omit<Program, "id">): Promise<void> {
+  await connectDB();
+  await ProgramModel.create({ ...input, id: randomUUID() });
+}
+
+export async function updateProgramById(
+  id: string,
+  data: Partial<Omit<Program, "id">>,
+) {
+  await connectDB();
+  await ProgramModel.updateOne({ id }, data);
+}
+
+export async function deleteProgramById(id: string) {
+  await connectDB();
+  await ProgramModel.deleteOne({ id });
+}
+
+export async function createStudent(input: Omit<Student, "id" | "total_points">) {
+  await connectDB();
+  await StudentModel.create({
+    ...input,
+    id: randomUUID(),
+    total_points: 0,
+  });
+}
+
+export async function updateStudentById(
+  id: string,
+  data: Partial<Omit<Student, "id">>,
+) {
+  await connectDB();
+  await StudentModel.updateOne({ id }, data);
+}
+
+export async function deleteStudentById(id: string) {
+  await connectDB();
+  await StudentModel.deleteOne({ id });
+}
+
+export async function createJury(input: Omit<Jury, "id">) {
+  await connectDB();
+  await JuryModel.create({ ...input, id: `jury-${randomUUID().slice(0, 8)}` });
+}
+
+export async function updateJuryById(id: string, data: Partial<Omit<Jury, "id">>) {
+  await connectDB();
+  await JuryModel.updateOne({ id }, data);
+}
+
+export async function deleteJuryById(id: string) {
+  await connectDB();
+  await JuryModel.deleteOne({ id });
+}
+
+export async function assignProgramToJury(programId: string, juryId: string) {
+  await connectDB();
+  await AssignedProgramModel.updateOne(
+    { program_id: programId, jury_id: juryId },
+    { program_id: programId, jury_id: juryId, status: "pending" },
+    { upsert: true },
+  );
+}
+
+export async function updateAssignmentStatus(
+  programId: string,
+  juryId: string,
+  status: AssignedProgram["status"],
+) {
+  await connectDB();
+  await AssignedProgramModel.updateOne({ program_id: programId, jury_id: juryId }, { status });
+}
+
+const CATEGORY_SCORES: Record<
+  Exclude<CategoryType, "none">,
+  Record<1 | 2 | 3, number>
+> = {
+  A: { 1: 10, 2: 7, 3: 5 },
+  B: { 1: 7, 2: 5, 3: 3 },
+  C: { 1: 5, 2: 3, 3: 1 },
+};
+
+const GRADE_BONUS: Record<Exclude<CategoryType, "none">, number> = {
+  A: 5,
+  B: 3,
+  C: 1,
+};
+
+const GROUP_SCORES: Record<1 | 2 | 3, number> = {
+  1: 20,
+  2: 15,
+  3: 10,
+};
+
+const GENERAL_SCORES: Record<1 | 2 | 3, number> = {
+  1: 25,
+  2: 20,
+  3: 15,
+};
+
+export function calculateScore(
+  section: SectionType,
+  category: CategoryType,
+  position: 1 | 2 | 3,
+  grade: CategoryType = "none",
+): number {
+  if (section === "single") {
+    const base = category !== "none" ? CATEGORY_SCORES[category][position] : 0;
+    const bonus = grade !== "none" ? GRADE_BONUS[grade] : 0;
+    return base + bonus;
+  }
+
+  if (section === "group") {
+    return GROUP_SCORES[position];
+  }
+
+  return GENERAL_SCORES[position];
+}
+
+export async function updateLiveScore(teamId: string, delta: number) {
+  await connectDB();
+  await LiveScoreModel.updateOne(
+    { team_id: teamId },
+    { $inc: { total_points: delta } },
+    { upsert: true },
+  );
+  await updateTeamTotals(teamId, delta);
+}
+
+export async function updateStudentScore(studentId: string, delta: number) {
+  await connectDB();
+  await StudentModel.updateOne(
+    { id: studentId },
+    { $inc: { total_points: delta } },
+    { upsert: false },
+  );
+}
+
+async function updateTeamTotals(teamId: string, delta: number) {
+  await connectDB();
+  await TeamModel.updateOne({ id: teamId }, { $inc: { total_points: delta } });
+}
+
+export async function resetLiveScores() {
+  await connectDB();
+  await Promise.all([
+    LiveScoreModel.updateMany({}, { $set: { total_points: 0 } }),
+    TeamModel.updateMany({}, { $set: { total_points: 0 } }),
+    StudentModel.updateMany({}, { $set: { total_points: 0 } }),
+  ]);
+}
+
+const defaultTeams: Team[] = [
+  {
+    id: "team-aurora",
+    name: "Team Aurora",
+    leader: "Anaya Joseph",
+    leader_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+    color: "#f97316",
+    description: "Music & rhythm powerhouse representing the senior batch.",
+    contact: "aurora@artsfest.edu",
+    total_points: 0,
+  },
+  {
+    id: "team-blaze",
+    name: "Team Blaze",
+    leader: "Kabir Varma",
+    leader_photo: "https://images.unsplash.com/photo-1504593811423-6dd665756598",
+    color: "#ef4444",
+    description: "Dance collective known for explosive choreography.",
+    contact: "blaze@artsfest.edu",
+    total_points: 0,
+  },
+  {
+    id: "team-cosmos",
+    name: "Team Cosmos",
+    leader: "Mira Lopes",
+    leader_photo: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39",
+    color: "#3b82f6",
+    description: "Fine arts and installations with a cosmic narrative.",
+    contact: "cosmos@artsfest.edu",
+    total_points: 0,
+  },
+  {
+    id: "team-dynamo",
+    name: "Team Dynamo",
+    leader: "Ritvik Sen",
+    leader_photo: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518",
+    color: "#22c55e",
+    description: "Theatre and stagecraft enthusiasts.",
+    contact: "dynamo@artsfest.edu",
+    total_points: 0,
+  },
+  {
+    id: "team-ember",
+    name: "Team Ember",
+    leader: "Salma Aziz",
+    leader_photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+    color: "#facc15",
+    description: "Literary arts champions with spoken word mastery.",
+    contact: "ember@artsfest.edu",
+    total_points: 0,
+  },
+  {
+    id: "team-flux",
+    name: "Team Flux",
+    leader: "Levi D'Souza",
+    leader_photo: "https://images.unsplash.com/photo-1546456073-92b9f0a8d1d6",
+    color: "#a855f7",
+    description: "Media & film crew pushing experimental visuals.",
+    contact: "flux@artsfest.edu",
+    total_points: 0,
+  },
+];
+
+const defaultStudents: Student[] = [
+  {
+    id: "stu-aurora-1",
+    name: "Neha Dominic",
+    team_id: "team-aurora",
+    chest_no: "A101",
+    avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
+    total_points: 0,
+  },
+  {
+    id: "stu-aurora-2",
+    name: "Arjun Prakash",
+    team_id: "team-aurora",
+    chest_no: "A102",
+    avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df",
+    total_points: 0,
+  },
+  {
+    id: "stu-blaze-1",
+    name: "Sana Mathew",
+    team_id: "team-blaze",
+    chest_no: "B201",
+    avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
+    total_points: 0,
+  },
+  {
+    id: "stu-cosmos-1",
+    name: "Joel Francis",
+    team_id: "team-cosmos",
+    chest_no: "C301",
+    avatar: "https://images.unsplash.com/photo-1504593811423-6dd665756598",
+    total_points: 0,
+  },
+  {
+    id: "stu-dynamo-1",
+    name: "Veda Krish",
+    team_id: "team-dynamo",
+    chest_no: "D401",
+    avatar: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39",
+    total_points: 0,
+  },
+  {
+    id: "stu-ember-1",
+    name: "Kiran Nair",
+    team_id: "team-ember",
+    chest_no: "E501",
+    avatar: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518",
+    total_points: 0,
+  },
+  {
+    id: "stu-flux-1",
+    name: "Maya Iqbal",
+    team_id: "team-flux",
+    chest_no: "F601",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+    total_points: 0,
+  },
+];
+
+const defaultPrograms: Program[] = [
+  {
+    id: "prog-solo-vocals",
+    name: "Solo Vocals",
+    section: "single",
+    stage: true,
+    category: "A",
+  },
+  {
+    id: "prog-duet-dance",
+    name: "Duet Dance",
+    section: "group",
+    stage: true,
+    category: "none",
+  },
+  {
+    id: "prog-live-paint",
+    name: "Live Canvas Painting",
+    section: "single",
+    stage: false,
+    category: "B",
+  },
+  {
+    id: "prog-shortfilm",
+    name: "Short Film",
+    section: "group",
+    stage: false,
+    category: "none",
+  },
+  {
+    id: "prog-quiz",
+    name: "General Quiz",
+    section: "general",
+    stage: true,
+    category: "none",
+  },
+];
+
+const defaultAssignments: AssignedProgram[] = [
+  { program_id: "prog-solo-vocals", jury_id: "jury-anika", status: "pending" },
+  { program_id: "prog-duet-dance", jury_id: "jury-dev", status: "pending" },
+  { program_id: "prog-live-paint", jury_id: "jury-sahana", status: "pending" },
+];
+
+const defaultJury: Jury[] = [
+  { id: "jury-anika", name: "Anika Raman", password: "anika@jury" },
+  { id: "jury-dev", name: "Dev Jain", password: "dev@jury" },
+  { id: "jury-sahana", name: "Sahana Biju", password: "sahana@jury" },
+];

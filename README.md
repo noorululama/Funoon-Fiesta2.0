@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Nusa Arts Fest Management
 
-## Getting Started
+Full-stack Next.js 14 application for managing college arts festival teams, students, programs, assignments, and scoring. The public site shows live standings, while secure admin & jury portals provide CRUD workflows and result pipelines.
 
-First, run the development server:
+### Tech Stack
+
+- Next.js 14 App Router + Server Actions
+- TypeScript + Tailwind + shadcn-ui
+- MongoDB (local) via Mongoose, seed data provided automatically
+
+### Local Setup
+
+1. **Install dependencies**
+
+```bash
+npm install
+```
+
+2. **Run MongoDB locally**
+
+- Start a local MongoDB instance (default connection: `mongodb://127.0.0.1:27017/fest_app`)
+- You can inspect/modify collections with MongoDB Compass
+
+3. **Configure environment (optional)**
+
+Create `.env.local` if you need a custom connection:
+
+```
+MONGODB_URI=mongodb://127.0.0.1:27017/fest_app
+MONGODB_DB=fest_app
+```
+
+4. **Start the dev server**
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Default Credentials
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Admin:** `admin / admin123`
+- **Sample juries:** see Mongo collection `juries` (e.g., `jury-anika / anika@jury`)
 
-## Learn More
+### Data Model
 
-To learn more about Next.js, take a look at the following resources:
+Collections managed in MongoDB:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `teams`, `students`, `programs`, `juries`
+- `assignedprograms`
+- `results_pending`, `results_approved`
+- `livescores`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app seeds starter data on first run; edit records directly in Compass or via the admin UI for a fully dynamic experience.

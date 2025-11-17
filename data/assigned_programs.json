@@ -1,0 +1,18 @@
+[
+  {
+    "program_id": "prog-solo-vocals",
+    "jury_id": "jury-anika",
+    "status": "pending"
+  },
+  {
+    "program_id": "prog-duet-dance",
+    "jury_id": "jury-dev",
+    "status": "pending"
+  },
+  {
+    "program_id": "prog-live-paint",
+    "jury_id": "jury-sahana",
+    "status": "pending"
+  }
+]
+

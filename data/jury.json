@@ -1,0 +1,18 @@
+[
+  {
+    "id": "jury-anika",
+    "name": "Anika Raman",
+    "password": "anika@jury"
+  },
+  {
+    "id": "jury-dev",
+    "name": "Dev Jain",
+    "password": "dev@jury"
+  },
+  {
+    "id": "jury-sahana",
+    "name": "Sahana Biju",
+    "password": "sahana@jury"
+  }
+]
+

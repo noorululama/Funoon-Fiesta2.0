@@ -1,0 +1,38 @@
+[
+  {
+    "id": "prog-solo-vocals",
+    "name": "Solo Vocals",
+    "section": "single",
+    "stage": true,
+    "category": "A"
+  },
+  {
+    "id": "prog-duet-dance",
+    "name": "Duet Dance",
+    "section": "group",
+    "stage": true,
+    "category": "none"
+  },
+  {
+    "id": "prog-live-paint",
+    "name": "Live Canvas Painting",
+    "section": "single",
+    "stage": false,
+    "category": "B"
+  },
+  {
+    "id": "prog-shortfilm",
+    "name": "Short Film",
+    "section": "group",
+    "stage": false,
+    "category": "none"
+  },
+  {
+    "id": "prog-quiz",
+    "name": "General Quiz",
+    "section": "general",
+    "stage": true,
+    "category": "none"
+  }
+]
+
