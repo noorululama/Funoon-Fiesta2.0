@@ -5,11 +5,14 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
+  assignProgramToJury,
   createProgram,
   deleteProgramById,
+  getJuries,
   getPrograms,
   updateProgramById,
 } from "@/lib/data";
+import { ProgramManager } from "@/components/program-manager";
 
 const programSchema = z.object({
   id: z.string().optional(),
@@ -21,9 +24,7 @@ const programSchema = z.object({
 
 const csvRowSchema = z.object({
   name: z.string().min(2, "Program name is required"),
-  section: z.enum(["single", "group", "general"], {
-    errorMap: () => ({ message: "section must be single | group | general" }),
-  }),
+  section: z.enum(["single", "group", "general"]),
   stage: z
     .string()
     .transform((value) => value.trim().toLowerCase())
@@ -32,9 +33,7 @@ const csvRowSchema = z.object({
     })
     .transform((value) => value === "true")
     .pipe(z.boolean()),
-  category: z.enum(["A", "B", "C", "none"], {
-    errorMap: () => ({ message: "category must be A | B | C | none" }),
-  }),
+  category: z.enum(["A", "B", "C", "none"]),
 });
 
 async function mutateProgram(
@@ -79,6 +78,53 @@ async function deleteProgramAction(formData: FormData) {
   "use server";
   const id = String(formData.get("id") ?? "");
   await deleteProgramById(id);
+  revalidatePath("/admin/programs");
+}
+
+async function bulkDeleteProgramsAction(formData: FormData) {
+  "use server";
+  const ids = String(formData.get("program_ids") ?? "");
+  const programIds = ids
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (programIds.length === 0) {
+    throw new Error("No programs selected for deletion.");
+  }
+  for (const programId of programIds) {
+    await deleteProgramById(programId);
+  }
+  revalidatePath("/admin/programs");
+}
+
+const bulkAssignSchema = z.object({
+  program_ids: z
+    .string()
+    .min(1)
+    .transform((value) =>
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    )
+    .refine((value) => value.length > 0, "No programs selected."),
+  jury_id: z.string().min(1, "Jury is required."),
+});
+
+async function bulkAssignProgramsAction(formData: FormData) {
+  "use server";
+  const parsed = bulkAssignSchema.safeParse({
+    program_ids: String(formData.get("program_ids") ?? ""),
+    jury_id: String(formData.get("jury_id") ?? ""),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues.map((issue) => issue.message).join(", "));
+  }
+  const { program_ids, jury_id } = parsed.data;
+  for (const programId of program_ids) {
+    await assignProgramToJury(programId, jury_id);
+  }
+  revalidatePath("/admin/assign");
   revalidatePath("/admin/programs");
 }
 
@@ -151,36 +197,12 @@ async function importProgramsAction(formData: FormData) {
 }
 
 export default async function ProgramsPage() {
-  const programs = await getPrograms();
+  const [programs, juries] = await Promise.all([getPrograms(), getJuries()]);
 
   return (
     <div className="space-y-10">
-      <Card>
-        <CardTitle>Bulk Import (CSV)</CardTitle>
-        <CardDescription className="mt-2">
-          Required columns: <code>name, section, stage, category</code>
-        </CardDescription>
-        <form
-          action={importProgramsAction}
-          className="mt-6 flex flex-col gap-4 md:flex-row md:items-end"
-        >
-          <div className="flex-1">
-            <label className="text-sm font-semibold text-white/70">
-              CSV File
-            </label>
-            <input
-              type="file"
-              name="file"
-              accept=".csv,text/csv"
-              required
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-fuchsia-400 focus:outline-none"
-            />
-          </div>
-          <Button type="submit">Import CSV</Button>
-        </form>
-      </Card>
-
-      <Card>
+      <div className="flex flex-row gap-4 ">
+      <Card className="flex-1">
         <CardTitle>Create Program</CardTitle>
         <CardDescription className="mt-2">
           Add programs with section, stage and category metadata.
@@ -210,49 +232,40 @@ export default async function ProgramsPage() {
           </Button>
         </form>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {programs.map((program) => (
-          <Card key={program.id} className="bg-slate-900/70">
-            <CardTitle>{program.name}</CardTitle>
-            <CardDescription className="mt-2">
-              Section: {program.section} · Stage: {program.stage ? "Yes" : "No"} ·
-              Category: {program.category}
-            </CardDescription>
-            <form
-              action={updateProgramAction}
-              className="mt-4 grid gap-3 text-sm text-white"
-            >
-              <input type="hidden" name="id" value={program.id} />
-              <Input name="name" defaultValue={program.name} />
-              <Select name="section" defaultValue={program.section}>
-                <option value="single">Single</option>
-                <option value="group">Group</option>
-                <option value="general">General</option>
-              </Select>
-              <Select name="category" defaultValue={program.category}>
-                <option value="A">Category A</option>
-                <option value="B">Category B</option>
-                <option value="C">Category C</option>
-                <option value="none">None</option>
-              </Select>
-              <Select name="stage" defaultValue={program.stage ? "true" : "false"}>
-                <option value="true">On Stage</option>
-                <option value="false">Off Stage</option>
-              </Select>
-              <Button type="submit" variant="secondary">
-                Update
-              </Button>
-            </form>
-            <form action={deleteProgramAction} className="mt-3">
-              <input type="hidden" name="id" value={program.id} />
-              <Button type="submit" variant="danger">
-                Delete
-              </Button>
-            </form>
-          </Card>
-        ))}
+      <Card>
+        <CardTitle>Bulk Import (CSV)</CardTitle>
+        <CardDescription className="mt-2">
+          Required columns: <code>name, section, stage, category</code>
+        </CardDescription>
+        <form
+          action={importProgramsAction}
+          className="mt-6 flex flex-col gap-4 md:flex-row md:items-end"
+        >
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-white/70">
+              CSV File
+            </label>
+            <input
+              type="file"
+              name="file"
+              accept=".csv,text/csv"
+              required
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-fuchsia-400 focus:outline-none"
+            />
+          </div>
+          <Button type="submit">Import CSV</Button>
+        </form>
+      </Card>
       </div>
+
+      <ProgramManager
+        programs={programs}
+        updateAction={updateProgramAction}
+        deleteAction={deleteProgramAction}
+        bulkDeleteAction={bulkDeleteProgramsAction}
+        bulkAssignAction={bulkAssignProgramsAction}
+        juries={juries}
+      />
     </div>
   );
 }

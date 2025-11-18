@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { SearchSelect } from "@/components/ui/search-select";
+import { Select } from "@/components/ui/select";
 import type { GradeType, Jury, Program, Student, Team } from "@/lib/types";
 
 interface AddResultFormProps {
@@ -51,8 +52,40 @@ export function AddResultForm({
     [programId, programs],
   );
 
+  const programOptions = useMemo(
+    () =>
+      programs.map((program) => ({
+        value: program.id,
+        label: program.name,
+        meta: `${program.section} · Cat ${program.category}${
+          program.stage ? " · On stage" : " · Off stage"
+        }`,
+      })),
+    [programs],
+  );
+
+  const studentOptions = useMemo(
+    () =>
+      students.map((student) => ({
+        value: student.id,
+        label: student.name,
+        meta: `Chest ${student.chest_no}`,
+      })),
+    [students],
+  );
+
+  const teamOptions = useMemo(
+    () =>
+      teams.map((team) => ({
+        value: team.id,
+        label: team.name,
+        meta: team.leader ? `Leader · ${team.leader}` : undefined,
+      })),
+    [teams],
+  );
+
   const isSingle = selectedProgram?.section === "single";
-  const placementOptions = isSingle ? students : teams;
+  const placementSelectOptions = isSingle ? studentOptions : teamOptions;
 
   return (
     <form action={action} className="space-y-8">
@@ -63,19 +96,15 @@ export function AddResultForm({
         <CardDescription className="mt-2">
           We auto-fill stage, section, and scoring rules.
         </CardDescription>
-        <Select
+        <SearchSelect
           className="mt-6"
-          value={programId}
           name="program_selector"
-          onChange={(event) => setProgramId(event.target.value)}
+          options={programOptions}
+          value={programId}
+          onValueChange={(next) => setProgramId(next)}
           disabled={lockProgram}
-        >
-          {programs.map((program) => (
-            <option key={program.id} value={program.id}>
-              {program.name} · {program.section} · Cat {program.category}
-            </option>
-          ))}
-        </Select>
+          placeholder="Search program..."
+        />
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
           <p>Section: {selectedProgram?.section}</p>
           <p>Stage: {selectedProgram?.stage ? "On stage" : "Off stage"}</p>
@@ -114,22 +143,17 @@ export function AddResultForm({
                     ? "2nd Place"
                     : "3rd Place"}
               </p>
-              <Select
+              <SearchSelect
                 className="mt-3"
                 name={`winner_${position}`}
                 required
                 defaultValue={
-                  initial?.[position]?.winnerId ?? placementOptions[0]?.id
+                  initial?.[position]?.winnerId ??
+                  placementSelectOptions[0]?.value
                 }
-              >
-                {placementOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {"chest_no" in option
-                      ? `${option.name} · Chest ${option.chest_no}`
-                      : option.name}
-                  </option>
-                ))}
-              </Select>
+                options={placementSelectOptions}
+                placeholder={`Search ${isSingle ? "student" : "team"}...`}
+              />
               {isSingle ? (
                 <Select
                   className="mt-3"

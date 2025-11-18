@@ -31,7 +31,7 @@ export default function AdminSecureLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-950/95 text-white">
-      <div className="mx-auto max-w-6xl px-5 py-10 md:px-8">
+      <div className="mx-auto max-w-full px-5 py-10 md:px-8">
         <Sidenavbar items={adminNav} heading="Admin Control">
           <div className="flex flex-col gap-8">
             <header className="glass-panel flex flex-wrap items-center justify-between gap-4 px-6 py-4">

@@ -71,7 +71,7 @@ export function TeamLeadersShowcase({ teams }: TeamLeadersShowcaseProps) {
         </p>
       </motion.div>
 
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden p-4">
         {/* Infinite Slider Container */}
         <div className="flex gap-6 animate-scroll">
           {/* Duplicate slides for infinite effect */}

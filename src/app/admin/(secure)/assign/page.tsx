@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   assignProgramToJury,
   getAssignments,
@@ -38,6 +38,15 @@ export default async function AssignProgramPage() {
   ]);
   const programMap = new Map(programs.map((program) => [program.id, program]));
   const juryMap = new Map(juries.map((jury) => [jury.id, jury]));
+  const programOptions = programs.map((program) => ({
+    value: program.id,
+    label: program.name,
+    meta: `${program.section} · Cat ${program.category}${program.stage ? " · On stage" : " · Off stage"}`,
+  }));
+  const juryOptions = juries.map((jury) => ({
+    value: jury.id,
+    label: jury.name,
+  }));
 
   return (
     <div className="space-y-8">
@@ -50,20 +59,20 @@ export default async function AssignProgramPage() {
           action={assignProgramAction}
           className="mt-6 grid gap-4 md:grid-cols-3"
         >
-          <Select name="program_id" required defaultValue={programs[0]?.id}>
-            {programs.map((program) => (
-              <option key={program.id} value={program.id}>
-                {program.name}
-              </option>
-            ))}
-          </Select>
-          <Select name="jury_id" required defaultValue={juries[0]?.id}>
-            {juries.map((jury) => (
-              <option key={jury.id} value={jury.id}>
-                {jury.name}
-              </option>
-            ))}
-          </Select>
+          <SearchSelect
+            name="program_id"
+            required
+            options={programOptions}
+            defaultValue={programOptions[0]?.value}
+            placeholder="Search program..."
+          />
+          <SearchSelect
+            name="jury_id"
+            required
+            options={juryOptions}
+            defaultValue={juryOptions[0]?.value}
+            placeholder="Search jury..."
+          />
           <Button type="submit">Assign</Button>
         </form>
       </Card>

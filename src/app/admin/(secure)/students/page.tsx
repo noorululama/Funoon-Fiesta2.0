@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { StudentManager } from "@/components/student-manager";
 import {
   createStudent,
   deleteStudentById,
@@ -59,6 +60,21 @@ async function deleteStudentAction(formData: FormData) {
   "use server";
   const id = String(formData.get("id") ?? "");
   await deleteStudentById(id);
+  revalidatePath("/admin/students");
+}
+
+async function bulkDeleteStudentsAction(formData: FormData) {
+  "use server";
+  const ids = String(formData.get("student_ids") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (ids.length === 0) {
+    throw new Error("No students selected for deletion.");
+  }
+  for (const id of ids) {
+    await deleteStudentById(id);
+  }
   revalidatePath("/admin/students");
 }
 
@@ -132,25 +148,11 @@ async function importStudentsAction(formData: FormData) {
   revalidatePath("/admin/students");
 }
 
-interface StudentsPageProps {
-  searchParams: Promise<{ q?: string }>;
-}
-
-export default async function StudentsPage({ searchParams }: StudentsPageProps) {
-  const { q } = await searchParams;
+export default async function StudentsPage() {
   const [students, teams] = await Promise.all([
     getStudents(),
     getTeams(),
   ]);
-  const teamMap = new Map(teams.map((team) => [team.id, team]));
-  const query = q?.trim().toLowerCase();
-  const filtered = query
-    ? students.filter(
-        (student) =>
-          student.name.toLowerCase().includes(query) ||
-          student.chest_no.toLowerCase().includes(query),
-      )
-    : students;
 
   return (
     <div className="space-y-8">
@@ -203,55 +205,13 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
         </form>
       </Card>
 
-      <form method="GET" className="flex gap-3">
-        <Input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name or chest number"
-          className="flex-1"
-        />
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
-
-      <div className="space-y-4">
-        {filtered.map((student) => (
-          <Card key={student.id} className="bg-slate-900/70">
-            <CardTitle>{student.name}</CardTitle>
-            <CardDescription className="mt-1">
-              Chest #{student.chest_no} · {teamMap.get(student.team_id)?.name}
-            </CardDescription>
-            <form
-              action={updateStudentAction}
-              className="mt-4 grid gap-3 md:grid-cols-3"
-            >
-              <input type="hidden" name="id" value={student.id} />
-              <Input name="name" defaultValue={student.name} />
-              <Input name="chest_no" defaultValue={student.chest_no} />
-              <Select name="team_id" defaultValue={student.team_id}>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </Select>
-              <Button type="submit" variant="secondary" className="md:col-span-3">
-                Update
-              </Button>
-            </form>
-            <form action={deleteStudentAction} className="mt-3">
-              <input type="hidden" name="id" value={student.id} />
-              <Button type="submit" variant="danger">
-                Delete
-              </Button>
-            </form>
-          </Card>
-        ))}
-        {filtered.length === 0 && (
-          <p className="text-sm text-white/60">No students match the query.</p>
-        )}
-      </div>
+      <StudentManager
+        students={students}
+        teams={teams}
+        updateAction={updateStudentAction}
+        deleteAction={deleteStudentAction}
+        bulkDeleteAction={bulkDeleteStudentsAction}
+      />
     </div>
   );
 }
