@@ -3,8 +3,10 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { SearchSelect } from "@/components/ui/search-select";
+import { AssignmentManager } from "@/components/assignment-manager";
 import {
   assignProgramToJury,
+  deleteAssignment,
   getAssignments,
   getJuries,
   getPrograms,
@@ -30,82 +32,80 @@ async function assignProgramAction(formData: FormData) {
   revalidatePath("/admin/assign");
 }
 
+async function deleteAssignmentAction(formData: FormData) {
+  "use server";
+  const programId = String(formData.get("program_id") ?? "");
+  const juryId = String(formData.get("jury_id") ?? "");
+  
+  if (!programId || !juryId) {
+    throw new Error("Program ID and Jury ID are required");
+  }
+
+  await deleteAssignment(programId, juryId);
+  revalidatePath("/admin/assign");
+}
+
 export default async function AssignProgramPage() {
   const [programs, juries, assignments] = await Promise.all([
     getPrograms(),
     getJuries(),
     getAssignments(),
   ]);
-  const programMap = new Map(programs.map((program) => [program.id, program]));
-  const juryMap = new Map(juries.map((jury) => [jury.id, jury]));
-  const programOptions = programs.map((program) => ({
+
+  // Ensure we have valid data
+  const validPrograms = programs.filter((p) => p?.id && p?.name);
+  const validJuries = juries.filter((j) => j?.id && j?.name);
+  const validAssignments = assignments.filter(
+    (a) => a?.program_id && a?.jury_id && a?.status,
+  );
+
+  const programOptions = validPrograms.map((program) => ({
     value: program.id,
     label: program.name,
     meta: `${program.section} · Cat ${program.category}${program.stage ? " · On stage" : " · Off stage"}`,
   }));
-  const juryOptions = juries.map((jury) => ({
+  const juryOptions = validJuries.map((jury) => ({
     value: jury.id,
     label: jury.name,
   }));
 
   return (
     <div className="space-y-8">
-      <Card>
-        <CardTitle>Assign Program to Jury</CardTitle>
-        <CardDescription className="mt-2">
-          Each pairing stays unique to avoid duplicate evaluations.
-        </CardDescription>
-        <form
-          action={assignProgramAction}
-          className="mt-6 grid gap-4 md:grid-cols-3"
-        >
-          <SearchSelect
-            name="program_id"
-            required
-            options={programOptions}
-            defaultValue={programOptions[0]?.value}
-            placeholder="Search program..."
-          />
-          <SearchSelect
-            name="jury_id"
-            required
-            options={juryOptions}
-            defaultValue={juryOptions[0]?.value}
-            placeholder="Search jury..."
-          />
-          <Button type="submit">Assign</Button>
-        </form>
-      </Card>
+      <div className="flex flex-row gap-4">
+        <Card className="flex-1">
+          <CardTitle>Assign Program to Jury</CardTitle>
+          <CardDescription className="mt-2">
+            Each pairing stays unique to avoid duplicate evaluations.
+          </CardDescription>
+          <form
+            action={assignProgramAction}
+            className="mt-6 grid gap-4 md:grid-cols-3"
+          >
+            <SearchSelect
+              name="program_id"
+              required
+              options={programOptions}
+              defaultValue={programOptions[0]?.value}
+              placeholder="Search program..."
+            />
+            <SearchSelect
+              name="jury_id"
+              required
+              options={juryOptions}
+              defaultValue={juryOptions[0]?.value}
+              placeholder="Search jury..."
+            />
+            <Button type="submit">Assign</Button>
+          </form>
+        </Card>
+      </div>
 
-      <Card className="bg-slate-900/70">
-        <CardTitle>Assignments</CardTitle>
-        <CardDescription className="mt-2">
-          Status auto-updates when jury submits.
-        </CardDescription>
-        <div className="mt-6 space-y-3">
-          {assignments.map((assignment) => (
-            <div
-              key={`${assignment.program_id}-${assignment.jury_id}`}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-            >
-              <div>
-                <p className="text-sm text-white/60">
-                  {programMap.get(assignment.program_id)?.name}
-                </p>
-                <p className="text-xs text-white/40">
-                  Jury · {juryMap.get(assignment.jury_id)?.name}
-                </p>
-              </div>
-              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs uppercase tracking-wide">
-                {assignment.status}
-              </span>
-            </div>
-          ))}
-          {assignments.length === 0 && (
-            <p className="text-sm text-white/60">No assignments yet.</p>
-          )}
-        </div>
-      </Card>
+      <AssignmentManager
+        assignments={validAssignments}
+        programs={validPrograms}
+        juries={validJuries}
+        deleteAction={deleteAssignmentAction}
+      />
     </div>
   );
 }

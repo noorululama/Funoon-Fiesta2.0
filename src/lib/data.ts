@@ -239,6 +239,11 @@ export async function updateAssignmentStatus(
   await AssignedProgramModel.updateOne({ program_id: programId, jury_id: juryId }, { status });
 }
 
+export async function deleteAssignment(programId: string, juryId: string) {
+  await connectDB();
+  await AssignedProgramModel.deleteOne({ program_id: programId, jury_id: juryId });
+}
+
 const CATEGORY_SCORES: Record<
   Exclude<CategoryType, "none">,
   Record<1 | 2 | 3, number>

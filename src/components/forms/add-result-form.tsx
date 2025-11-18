@@ -96,15 +96,16 @@ export function AddResultForm({
         <CardDescription className="mt-2">
           We auto-fill stage, section, and scoring rules.
         </CardDescription>
-        <SearchSelect
-          className="mt-6"
-          name="program_selector"
-          options={programOptions}
-          value={programId}
-          onValueChange={(next) => setProgramId(next)}
-          disabled={lockProgram}
-          placeholder="Search program..."
-        />
+        <div className="mt-6">
+          <SearchSelect
+            name="program_selector"
+            options={programOptions}
+            value={programId}
+            onValueChange={(next) => setProgramId(next)}
+            disabled={lockProgram}
+            placeholder="Search program..."
+          />
+        </div>
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
           <p>Section: {selectedProgram?.section}</p>
           <p>Stage: {selectedProgram?.stage ? "On stage" : "Off stage"}</p>
@@ -143,17 +144,18 @@ export function AddResultForm({
                     ? "2nd Place"
                     : "3rd Place"}
               </p>
-              <SearchSelect
-                className="mt-3"
-                name={`winner_${position}`}
-                required
-                defaultValue={
-                  initial?.[position]?.winnerId ??
-                  placementSelectOptions[0]?.value
-                }
-                options={placementSelectOptions}
-                placeholder={`Search ${isSingle ? "student" : "team"}...`}
-              />
+              <div className="mt-3">
+                <SearchSelect
+                  name={`winner_${position}`}
+                  required
+                  defaultValue={
+                    initial?.[position]?.winnerId ??
+                    placementSelectOptions[0]?.value
+                  }
+                  options={placementSelectOptions}
+                  placeholder={`Search ${isSingle ? "student" : "team"}...`}
+                />
+              </div>
               {isSingle ? (
                 <Select
                   className="mt-3"

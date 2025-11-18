@@ -191,13 +191,13 @@ export function ProgramManager({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <div className="md:col-span-2 flex items-center rounded-2xl border border-white/10 bg-white/5 px-4">
-          <Search className="mr-2 h-4 w-4 text-white/50" />
+      <div className="relative z-20 grid gap-3 md:grid-cols-4">
+        <div className="relative z-20 md:col-span-2 flex items-center rounded-2xl border border-white/10 bg-white/5 px-4 transition-all duration-200 hover:border-white/20 focus-within:border-fuchsia-400/50 focus-within:ring-2 focus-within:ring-fuchsia-400/30 focus-within:bg-white/10">
+          <Search className="mr-2 h-4 w-4 text-white/50 flex-shrink-0" />
           <Input
             type="text"
             placeholder="Search by program name"
-            className="border-none bg-transparent px-0"
+            className="border-none bg-transparent px-0 placeholder:text-white/40"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />

@@ -22,8 +22,12 @@ const studentSchema = z.object({
 
 const csvStudentSchema = z.object({
   name: z.string().min(2, "Student name is required"),
-  team_id: z.string().min(2, "team_id is required"),
+  team_id: z.string().min(2).optional(),
+  team_name: z.string().min(2).optional(),
   chest_no: z.string().min(1, "Chest number is required"),
+}).refine((data) => data.team_id || data.team_name, {
+  message: "Either team_id or team_name is required",
+  path: ["team_id"],
 });
 
 async function upsertStudent(formData: FormData, mode: "create" | "update") {
@@ -98,7 +102,19 @@ function parseStudentCsv(content: string) {
   const headers = headerLine
     .split(",")
     .map((header) => header.trim().toLowerCase());
-  const requiredHeaders = ["name", "team_id", "chest_no"];
+  
+  // Accept either team_id or team_name
+  const hasTeamId = headers.includes("team_id");
+  const hasTeamName = headers.includes("team_name");
+  
+  if (!hasTeamId && !hasTeamName) {
+    throw new Error('Missing "team_id" or "team_name" column in CSV header.');
+  }
+  
+  const requiredHeaders = ["name", "chest_no"];
+  if (hasTeamId) requiredHeaders.push("team_id");
+  if (hasTeamName) requiredHeaders.push("team_name");
+  
   for (const column of requiredHeaders) {
     if (!headers.includes(column)) {
       throw new Error(`Missing "${column}" column in CSV header.`);
@@ -130,18 +146,48 @@ async function importStudentsAction(formData: FormData) {
   }
   const teams = await getTeams();
   const teamIds = new Set(teams.map((team) => team.id));
+  const teamNameToId = new Map(teams.map((team) => [team.name.toUpperCase(), team.id]));
+  
   for (const entry of entries) {
+    // Skip empty rows
+    if (!entry.data.name || !entry.data.name.trim()) {
+      continue;
+    }
+    
     const parsed = csvStudentSchema.safeParse(entry.data);
     if (!parsed.success) {
       const message = parsed.error.issues.map((issue) => issue.message).join(", ");
       throw new Error(`Row ${entry.row}: ${message}`);
     }
-    if (!teamIds.has(parsed.data.team_id)) {
-      throw new Error(`Row ${entry.row}: team_id "${parsed.data.team_id}" not found.`);
+    
+    // Resolve team_id: check if provided value is a valid team_id, otherwise treat as team_name
+    let resolvedTeamId = parsed.data.team_id;
+    
+    // If team_id is provided but not found in valid IDs, try treating it as a team name
+    if (resolvedTeamId && !teamIds.has(resolvedTeamId)) {
+      const teamNameUpper = resolvedTeamId.toUpperCase();
+      const foundId = teamNameToId.get(teamNameUpper);
+      if (foundId) {
+        resolvedTeamId = foundId;
+      }
     }
+    
+    // If still no team_id, try team_name field
+    if (!resolvedTeamId && parsed.data.team_name) {
+      const teamNameUpper = parsed.data.team_name.toUpperCase();
+      resolvedTeamId = teamNameToId.get(teamNameUpper);
+    }
+    
+    if (!resolvedTeamId) {
+      const providedValue = parsed.data.team_id || parsed.data.team_name || "";
+      throw new Error(
+        `Row ${entry.row}: Team "${providedValue}" not found. Available teams: ${Array.from(teamNameToId.keys()).join(", ")}`
+      );
+    }
+    
     await createStudent({
       name: parsed.data.name,
-      team_id: parsed.data.team_id,
+      team_id: resolvedTeamId,
       chest_no: parsed.data.chest_no,
     });
   }
@@ -183,7 +229,11 @@ export default async function StudentsPage() {
       <Card>
         <CardTitle>Bulk Import Students (CSV)</CardTitle>
         <CardDescription className="mt-2">
-          Required columns: <code>name, team_id, chest_no</code>
+          Required columns: <code>name, chest_no</code> and either <code>team_id</code> or <code>team_name</code>
+          <br />
+          <span className="text-xs text-white/50">
+            Team names: SAMARQAND, NAHAVAND, YAMAMA, QURTUBA, MUQADDAS, BUKHARA
+          </span>
         </CardDescription>
         <form
           action={importStudentsAction}
