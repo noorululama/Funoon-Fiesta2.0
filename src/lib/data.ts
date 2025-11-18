@@ -33,6 +33,18 @@ async function seedCollection<T>(
   }
 }
 
+async function updateTeamNames() {
+  await connectDB();
+  // Update existing teams with new names and colors from defaultTeams
+  for (const team of defaultTeams) {
+    await TeamModel.updateOne(
+      { id: team.id },
+      { $set: { name: team.name, color: team.color } },
+      { upsert: false }
+    );
+  }
+}
+
 async function seedDatabase() {
   await connectDB();
 
@@ -45,6 +57,9 @@ async function seedDatabase() {
       LiveScoreModel.countDocuments(),
       AssignedProgramModel.countDocuments(),
     ]);
+
+  // Always update team names to ensure they match the current defaults
+  await updateTeamNames();
 
   await seedCollection(teamCount, async () => {
     await TeamModel.insertMany(defaultTeams);
@@ -133,6 +148,22 @@ export async function getApprovedResults(): Promise<ResultRecord[]> {
   await ensureSeedData();
   const results = await ApprovedResultModel.find().lean<ResultRecord[]>();
   return normalize(results);
+}
+
+export async function getPendingResultById(
+  id: string,
+): Promise<ResultRecord | null> {
+  await ensureSeedData();
+  const result = await PendingResultModel.findOne({ id }).lean<ResultRecord | null>();
+  return result ? JSON.parse(JSON.stringify(result)) : null;
+}
+
+export async function getApprovedResultById(
+  id: string,
+): Promise<ResultRecord | null> {
+  await ensureSeedData();
+  const result = await ApprovedResultModel.findOne({ id }).lean<ResultRecord | null>();
+  return result ? JSON.parse(JSON.stringify(result)) : null;
 }
 
 export async function createProgram(input: Omit<Program, "id">): Promise<void> {
@@ -289,61 +320,61 @@ export async function resetLiveScores() {
 
 const defaultTeams: Team[] = [
   {
-    id: "team-aurora",
-    name: "Team Aurora",
-    leader: "Anaya Joseph",
-    leader_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-    color: "#f97316",
-    description: "Music & rhythm powerhouse representing the senior batch.",
-    contact: "aurora@artsfest.edu",
-    total_points: 0,
-  },
-  {
-    id: "team-blaze",
-    name: "Team Blaze",
-    leader: "Kabir Varma",
-    leader_photo: "https://images.unsplash.com/photo-1504593811423-6dd665756598",
-    color: "#ef4444",
-    description: "Dance collective known for explosive choreography.",
-    contact: "blaze@artsfest.edu",
-    total_points: 0,
-  },
-  {
     id: "team-cosmos",
-    name: "Team Cosmos",
+    name: "SAMARQAND",
     leader: "Mira Lopes",
     leader_photo: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39",
-    color: "#3b82f6",
+    color: "#D72638",
     description: "Fine arts and installations with a cosmic narrative.",
     contact: "cosmos@artsfest.edu",
     total_points: 0,
   },
   {
     id: "team-dynamo",
-    name: "Team Dynamo",
+    name: "NAHAVAND",
     leader: "Ritvik Sen",
     leader_photo: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518",
-    color: "#22c55e",
+    color: "#1E3A8A",
     description: "Theatre and stagecraft enthusiasts.",
     contact: "dynamo@artsfest.edu",
     total_points: 0,
   },
   {
+    id: "team-blaze",
+    name: "YAMAMA",
+    leader: "Kabir Varma",
+    leader_photo: "https://images.unsplash.com/photo-1504593811423-6dd665756598",
+    color: "#7C3AED",
+    description: "Dance collective known for explosive choreography.",
+    contact: "blaze@artsfest.edu",
+    total_points: 0,
+  },
+  {
     id: "team-ember",
-    name: "Team Ember",
-    leader: "Salma Aziz",
+    name: "QURTUBA",
+    leader: "Salma Aziz & Ahmed Hassan",
     leader_photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-    color: "#facc15",
+    color: "#FACC15",
     description: "Literary arts champions with spoken word mastery.",
     contact: "ember@artsfest.edu",
     total_points: 0,
   },
   {
+    id: "team-aurora",
+    name: "MUQADDAS",
+    leader: "Anaya Joseph",
+    leader_photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+    color: "#059669",
+    description: "Music & rhythm powerhouse representing the senior batch.",
+    contact: "aurora@artsfest.edu",
+    total_points: 0,
+  },
+  {
     id: "team-flux",
-    name: "Team Flux",
+    name: "BUKHARA",
     leader: "Levi D'Souza",
     leader_photo: "https://images.unsplash.com/photo-1546456073-92b9f0a8d1d6",
-    color: "#a855f7",
+    color: "#FB923C",
     description: "Media & film crew pushing experimental visuals.",
     contact: "flux@artsfest.edu",
     total_points: 0,

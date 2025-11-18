@@ -19,6 +19,12 @@ const studentSchema = z.object({
   chest_no: z.string().min(1),
 });
 
+const csvStudentSchema = z.object({
+  name: z.string().min(2, "Student name is required"),
+  team_id: z.string().min(2, "team_id is required"),
+  chest_no: z.string().min(1, "Chest number is required"),
+});
+
 async function upsertStudent(formData: FormData, mode: "create" | "update") {
   const parsed = studentSchema.safeParse({
     id: formData.get("id"),
@@ -66,6 +72,66 @@ async function updateStudentAction(formData: FormData) {
   await upsertStudent(formData, "update");
 }
 
+function parseStudentCsv(content: string) {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return [];
+  const [headerLine, ...rows] = lines;
+  const headers = headerLine
+    .split(",")
+    .map((header) => header.trim().toLowerCase());
+  const requiredHeaders = ["name", "team_id", "chest_no"];
+  for (const column of requiredHeaders) {
+    if (!headers.includes(column)) {
+      throw new Error(`Missing "${column}" column in CSV header.`);
+    }
+  }
+  const indexes = requiredHeaders.map((column) => headers.indexOf(column));
+  return rows.map((row, index) => {
+    const cells = row.split(",").map((cell) => cell.trim());
+    if (cells.length < headers.length) {
+      throw new Error(`Row ${index + 2} is incomplete.`);
+    }
+    const data = Object.fromEntries(
+      requiredHeaders.map((column, idx) => [column, cells[indexes[idx]] ?? ""]),
+    );
+    return { row: index + 2, data };
+  });
+}
+
+async function importStudentsAction(formData: FormData) {
+  "use server";
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Please upload a CSV file.");
+  }
+  const text = await file.text();
+  const entries = parseStudentCsv(text);
+  if (entries.length === 0) {
+    throw new Error("CSV file does not contain any data rows.");
+  }
+  const teams = await getTeams();
+  const teamIds = new Set(teams.map((team) => team.id));
+  for (const entry of entries) {
+    const parsed = csvStudentSchema.safeParse(entry.data);
+    if (!parsed.success) {
+      const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+      throw new Error(`Row ${entry.row}: ${message}`);
+    }
+    if (!teamIds.has(parsed.data.team_id)) {
+      throw new Error(`Row ${entry.row}: team_id "${parsed.data.team_id}" not found.`);
+    }
+    await createStudent({
+      name: parsed.data.name,
+      team_id: parsed.data.team_id,
+      chest_no: parsed.data.chest_no,
+    });
+  }
+  revalidatePath("/admin/students");
+}
+
 interface StudentsPageProps {
   searchParams: Promise<{ q?: string }>;
 }
@@ -88,6 +154,31 @@ export default async function StudentsPage({ searchParams }: StudentsPageProps) 
 
   return (
     <div className="space-y-8">
+      <Card>
+        <CardTitle>Bulk Import Students (CSV)</CardTitle>
+        <CardDescription className="mt-2">
+          Required columns: <code>name, team_id, chest_no</code>
+        </CardDescription>
+        <form
+          action={importStudentsAction}
+          className="mt-6 flex flex-col gap-4 md:flex-row md:items-end"
+        >
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-white/70">
+              CSV File
+            </label>
+            <input
+              type="file"
+              name="file"
+              accept=".csv,text/csv"
+              required
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-fuchsia-400 focus:outline-none"
+            />
+          </div>
+          <Button type="submit">Import CSV</Button>
+        </form>
+      </Card>
+
       <Card>
         <CardTitle>Add Student</CardTitle>
         <CardDescription className="mt-2">

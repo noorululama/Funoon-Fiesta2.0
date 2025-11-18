@@ -1,10 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { getLiveScores, getTeams } from "@/lib/data";
 import { formatNumber } from "@/lib/utils";
+import { LiveScorePulse } from "@/components/live-score-pulse";
+import { TeamLeadersShowcase } from "@/components/team-leaders-showcase";
 
 async function getHomeData() {
   const [teams, live] = await Promise.all([
@@ -31,15 +32,15 @@ export default async function HomePage() {
     <main className="mx-auto max-w-6xl space-y-16 px-5 py-16 md:px-8">
       <section className="grid gap-10 rounded-[32px] border border-white/10 bg-gradient-to-r from-indigo-950/80 via-fuchsia-900/40 to-emerald-900/30 p-10 text-white shadow-[0_25px_120px_rgba(236,72,153,0.25)] backdrop-blur-2xl md:grid-cols-2">
         <div className="space-y-6">
-          <Badge tone="cyan">Nusa Arts Fest 2025</Badge>
+          <Badge tone="cyan">Funoon Fiesta</Badge>
           <h1 className="text-4xl font-bold leading-tight md:text-5xl">
-            Celebrate teams, talent, and the spirit of Kerala&apos;s biggest arts
-            showdown.
+            A Premier Platform Showcasing the Rich Art Forms of Islamic Culture
           </h1>
           <p className="text-lg text-white/80">
-            Follow the live scoreboard, discover the creative squads, and cheer for
-            your favourites. Admins and Jury members can manage programs, students,
-            and results from their secure portals.
+            Funoon Fiesta celebrates creativity, cultural appreciation, and artistic expression. 
+            Follow the live scoreboard, discover talented teams, and witness the beauty of Islamic 
+            art forms presented to a wider audience. Admins and Jury members can manage programs, 
+            students, and results from their secure portals.
           </p>
           <div className="flex flex-wrap gap-4">
             <Link href="/results">
@@ -76,74 +77,44 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="space-y-6">
-        <div>
-          <Badge tone="pink">Live Score Pulse</Badge>
-          <h2 className="mt-3 text-3xl font-semibold text-white">
-            Six powerhouse teams. One trophy.
-          </h2>
-          <p className="text-white/70">
-            Points auto-sync once results are approved. Track the frenzy below.
-          </p>
-        </div>
-        <div className="section-grid">
-          {teams.map((team) => (
-            <Card
-              key={team.id}
-              className="relative overflow-hidden border border-white/5 bg-slate-900/60"
-            >
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{ background: `linear-gradient(135deg, ${team.color}, #0f172a)` }}
-              />
-              <div className="relative flex flex-col gap-4">
-                <div className="flex items-center gap-4">
-                  <Image
-                    src={`${team.leader_photo}?auto=format&fit=facearea&facepad=2&w=120&h=120`}
-                    alt={team.leader}
-                    width={72}
-                    height={72}
-                    className="rounded-2xl border-2 border-white/20 object-cover"
-                  />
-                  <div>
-                    <CardTitle>{team.name}</CardTitle>
-                    <CardDescription>Leader · {team.leader}</CardDescription>
-                  </div>
-                </div>
-                <CardDescription>{team.description}</CardDescription>
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white">
-                  <div>
-                    <p className="text-xs uppercase text-white/60">Contact</p>
-                    <p className="font-semibold">{team.contact}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs uppercase text-white/60">Points</p>
-                    <p className="text-2xl font-bold">
-                      {formatNumber(live.get(team.id) ?? team.total_points)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <LiveScorePulse teams={teams} liveScores={live} />
+
+      <TeamLeadersShowcase teams={teams} />
 
       <section className="space-y-4">
         <div>
-          <Badge tone="amber">About The Fest</Badge>
-          <h2 className="mt-3 text-3xl font-semibold text-white">Why Arts Fest?</h2>
+          <Badge tone="amber">About Funoon Fiesta</Badge>
+          <h2 className="mt-3 text-3xl font-semibold text-white">Celebrating Islamic Art & Culture</h2>
           <p className="text-white/70">
-            A three-day carnival of talent across music, dance, theatre, visual arts,
-            and general events. Spread across multiple stages, each moment is judged
-            transparently and scored instantly.
+            Funoon Fiesta is a premier platform for students to showcase their talents and highlight 
+            the rich art forms of Islamic culture. Through music, calligraphy, poetry, traditional 
+            dance, visual arts, and more, we present these beautiful expressions to a wider audience, 
+            fostering creativity, cultural appreciation, and artistic excellence. Each performance 
+            is judged transparently and scored instantly, ensuring fair recognition of every participant.
           </p>
         </div>
         <div className="section-grid">
           {[
-            { title: "Transparency First", copy: "All scoring rules are codified in the platform. Every entry is auto-scored before humans review.", tag: "Automated scoring" },
-            { title: "Three Portals", copy: "Public scoreboard, secure admin control, and jury workspace ensure seamless collaboration.", tag: "Role-based access" },
-            { title: "Live Updates", copy: "Once admins approve submissions, both team and student scores refresh in seconds.", tag: "Realtime sync" },
+            { 
+              title: "Cultural Heritage", 
+              copy: "We celebrate the diverse and rich art forms rooted in Islamic culture, from traditional calligraphy to contemporary expressions, preserving and promoting cultural appreciation.", 
+              tag: "Cultural showcase" 
+            },
+            { 
+              title: "Student Excellence", 
+              copy: "A premier platform designed for students to showcase their talents, creativity, and artistic expression in a supportive and competitive environment.", 
+              tag: "Talent platform" 
+            },
+            { 
+              title: "Transparent Judging", 
+              copy: "All scoring rules are codified in the platform. Every entry is auto-scored before human review, ensuring fairness and transparency in every evaluation.", 
+              tag: "Fair evaluation" 
+            },
+            { 
+              title: "Live Updates", 
+              copy: "Once admins approve submissions, both team and student scores refresh in seconds, keeping everyone connected to the action in real-time.", 
+              tag: "Realtime sync" 
+            },
           ].map((item) => (
             <Card key={item.title}>
               <Badge tone="emerald">{item.tag}</Badge>
@@ -157,9 +128,10 @@ export default async function HomePage() {
       <section className="space-y-6 rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-2xl md:flex md:items-center md:justify-between">
         <div>
           <Badge tone="cyan">Need help?</Badge>
-          <h2 className="mt-4 text-3xl font-semibold">Fest Control Room</h2>
+          <h2 className="mt-4 text-3xl font-semibold">Funoon Fiesta Control Room</h2>
           <p className="text-white/70">
-            +91 884 776 2234 · festcontrol@nusa.edu · College Stadium, Kochi
+            Contact us for support, inquiries, or assistance with the platform. 
+            Our team is here to help ensure a smooth and enjoyable experience.
           </p>
         </div>
         <div className="flex flex-wrap gap-4">
@@ -171,6 +143,6 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
-    </main>
+      </main>
   );
 }

@@ -6,7 +6,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import type { Jury, Program, Student, Team } from "@/lib/types";
+import type { GradeType, Jury, Program, Student, Team } from "@/lib/types";
 
 interface AddResultFormProps {
   programs: Program[];
@@ -15,6 +15,16 @@ interface AddResultFormProps {
   juries: Jury[];
   action: (formData: FormData) => Promise<void>;
   lockProgram?: boolean;
+  initial?: Partial<
+    Record<
+      1 | 2 | 3,
+      {
+        winnerId: string;
+        grade?: GradeType;
+      }
+    >
+  >;
+  submitLabel?: string;
 }
 
 const gradeOptions = [
@@ -31,6 +41,8 @@ export function AddResultForm({
   juries,
   action,
   lockProgram = false,
+  initial,
+  submitLabel = "Submit for Approval",
 }: AddResultFormProps) {
   const [programId, setProgramId] = useState(programs[0]?.id ?? "");
   const [showRules, setShowRules] = useState(false);
@@ -106,7 +118,9 @@ export function AddResultForm({
                 className="mt-3"
                 name={`winner_${position}`}
                 required
-                defaultValue={placementOptions[0]?.id}
+                defaultValue={
+                  initial?.[position]?.winnerId ?? placementOptions[0]?.id
+                }
               >
                 {placementOptions.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -120,7 +134,7 @@ export function AddResultForm({
                 <Select
                   className="mt-3"
                   name={`grade_${position}`}
-                  defaultValue="A"
+                  defaultValue={initial?.[position]?.grade ?? "A"}
                 >
                   {gradeOptions.map((grade) => (
                     <option key={grade.value} value={grade.value}>
@@ -156,7 +170,7 @@ export function AddResultForm({
           ))}
         </Select>
         <Button type="submit" className="mt-4">
-          Submit for Approval
+          {submitLabel}
         </Button>
       </Card>
       <Modal

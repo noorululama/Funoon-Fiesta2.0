@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import {
   getApprovedResults,
@@ -6,6 +8,13 @@ import {
   getStudents,
   getTeams,
 } from "@/lib/data";
+import { deleteApprovedResult } from "@/lib/result-service";
+
+async function deleteApprovedResultAction(formData: FormData) {
+  "use server";
+  const id = String(formData.get("id") ?? "");
+  await deleteApprovedResult(id);
+}
 
 export default async function ApprovedResultsAdminPage() {
   const [results, programs, students, teams, juries] = await Promise.all([
@@ -40,9 +49,22 @@ export default async function ApprovedResultsAdminPage() {
                   Jury · {juryMap.get(result.jury_id)?.name}
                 </CardDescription>
               </div>
-              <p className="text-xs text-white/50">
-                Approved on {new Date(result.submitted_at).toLocaleString()}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-white/50">
+                  Approved on {new Date(result.submitted_at).toLocaleString()}
+                </p>
+                <Link href={`/admin/approved-results/${result.id}/edit`}>
+                  <Button type="button" variant="ghost">
+                    Edit
+                  </Button>
+                </Link>
+                <form action={deleteApprovedResultAction}>
+                  <input type="hidden" name="id" value={result.id} />
+                  <Button type="submit" variant="danger">
+                    Delete
+                  </Button>
+                </form>
+              </div>
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               {result.entries.map((entry) => {

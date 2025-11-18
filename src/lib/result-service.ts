@@ -15,7 +15,7 @@ import {
   StudentModel,
   TeamModel,
 } from "./models";
-import type { ResultRecord } from "./types";
+import type { ResultEntry, ResultRecord } from "./types";
 
 type WinnerPayload = {
   position: 1 | 2 | 3;
@@ -28,6 +28,69 @@ function sanitizeGrade(grade: string | undefined): "A" | "B" | "C" | "none" {
     return grade;
   }
   return "none";
+}
+
+async function buildEntries(
+  program: { id: string; section: string; category: string },
+  winners: WinnerPayload[],
+) {
+  if (program.section === "single") {
+    const ids = winners.map((winner) => winner.id);
+    const students = await StudentModel.find({ id: { $in: ids } }).lean();
+    const studentMap = new Map(students.map((student) => [student.id, student]));
+    return winners.map((winner) => {
+      const student = studentMap.get(winner.id);
+      if (!student) {
+        throw new Error("Invalid student selected");
+      }
+      const grade = sanitizeGrade(winner.grade);
+      return {
+        position: winner.position,
+        student_id: student.id,
+        team_id: student.team_id,
+        grade,
+        score: calculateScore(
+          program.section as "single",
+          program.category as "A" | "B" | "C" | "none",
+          winner.position,
+          grade,
+        ),
+      };
+    });
+  }
+
+  const ids = winners.map((winner) => winner.id);
+  const teams = await TeamModel.find({ id: { $in: ids } }).lean();
+  const teamMap = new Map(teams.map((team) => [team.id, team]));
+  return winners.map((winner) => {
+    const team = teamMap.get(winner.id);
+    if (!team) {
+      throw new Error("Invalid team selected");
+    }
+    return {
+      position: winner.position,
+      team_id: team.id,
+      grade: "none" as const,
+      score: calculateScore(
+        program.section as "group" | "general",
+        "none",
+        winner.position,
+        "none",
+      ),
+    };
+  });
+}
+
+async function applyEntryScores(entries: ResultEntry[], direction: 1 | -1) {
+  for (const entry of entries) {
+    const delta = entry.score * direction;
+    if (entry.student_id) {
+      await updateStudentScore(entry.student_id, delta);
+    }
+    if (entry.team_id) {
+      await updateLiveScore(entry.team_id, delta);
+    }
+  }
 }
 
 export async function submitResultToPending({
@@ -55,35 +118,7 @@ export async function submitResultToPending({
     throw new Error("Result already exists for this program");
   }
 
-  const entries = await Promise.all(
-    winners.map(async (winner) => {
-      if (program.section === "single") {
-        const student = await StudentModel.findOne({ id: winner.id }).lean();
-        if (!student) throw new Error("Invalid student selected");
-        const grade = sanitizeGrade(winner.grade);
-        return {
-          position: winner.position,
-          student_id: student.id,
-          team_id: student.team_id,
-          grade,
-          score: calculateScore(
-            program.section,
-            program.category,
-            winner.position,
-            grade,
-          ),
-        };
-      }
-      const team = await TeamModel.findOne({ id: winner.id }).lean();
-      if (!team) throw new Error("Invalid team selected");
-      return {
-        position: winner.position,
-        team_id: team.id,
-        grade: "none" as const,
-        score: calculateScore(program.section, "none", winner.position, "none"),
-      };
-    }),
-  );
+  const entries = await buildEntries(program, winners);
 
   const record: ResultRecord = {
     id: randomUUID(),
@@ -144,5 +179,67 @@ export async function rejectResult(resultId: string) {
 
   revalidatePath("/admin/pending-results");
   revalidatePath("/jury/programs");
+}
+
+export async function updatePendingResultEntries(
+  resultId: string,
+  winners: WinnerPayload[],
+) {
+  await connectDB();
+  const record = await PendingResultModel.findOne({ id: resultId }).lean();
+  if (!record) {
+    throw new Error("Pending result not found");
+  }
+  const program = await ProgramModel.findOne({ id: record.program_id }).lean();
+  if (!program) throw new Error("Program not found");
+  const entries = await buildEntries(program, winners);
+  await PendingResultModel.updateOne(
+    { id: resultId },
+    {
+      entries,
+      submitted_at: new Date().toISOString(),
+    },
+  );
+  revalidatePath("/admin/pending-results");
+}
+
+export async function updateApprovedResult(
+  resultId: string,
+  winners: WinnerPayload[],
+) {
+  await connectDB();
+  const record = await ApprovedResultModel.findOne({ id: resultId }).lean();
+  if (!record) {
+    throw new Error("Approved result not found");
+  }
+  const program = await ProgramModel.findOne({ id: record.program_id }).lean();
+  if (!program) throw new Error("Program not found");
+  const entries = await buildEntries(program, winners);
+  await applyEntryScores(record.entries, -1);
+  await ApprovedResultModel.updateOne(
+    { id: resultId },
+    {
+      entries,
+      submitted_at: new Date().toISOString(),
+    },
+  );
+  await applyEntryScores(entries, 1);
+  revalidatePath("/");
+  revalidatePath("/scoreboard");
+  revalidatePath("/results");
+  revalidatePath("/admin/approved-results");
+}
+
+export async function deleteApprovedResult(resultId: string) {
+  await connectDB();
+  const record = await ApprovedResultModel.findOne({ id: resultId }).lean();
+  if (!record) return;
+  await applyEntryScores(record.entries, -1);
+  await ApprovedResultModel.deleteOne({ id: resultId });
+  await updateAssignmentStatus(record.program_id, record.jury_id, "submitted");
+  revalidatePath("/");
+  revalidatePath("/scoreboard");
+  revalidatePath("/results");
+  revalidatePath("/admin/approved-results");
 }
 

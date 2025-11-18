@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import {
@@ -58,6 +59,11 @@ export default async function PendingResultsPage() {
                 </CardDescription>
               </div>
               <div className="flex gap-3">
+                <Link href={`/admin/pending-results/${result.id}/edit`}>
+                  <Button type="button" variant="ghost">
+                    Edit
+                  </Button>
+                </Link>
                 <form action={approveResultAction}>
                   <input type="hidden" name="id" value={result.id} />
                   <Button type="submit" variant="secondary">

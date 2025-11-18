@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nusa Arts Fest Control Center",
+  title: "Funoon Fiesta - Showcasing Islamic Art & Culture",
   description:
-    "Live scoreboard, admin controls, and jury tools for the college arts fest.",
-  metadataBase: new URL("https://artsfest.local"),
+    "A premier platform for students to showcase their talents and highlight the rich art forms of Islamic culture. Live scoreboard, admin controls, and jury tools for Funoon Fiesta.",
+  metadataBase: new URL("https://funoonfiesta.local"),
 };
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950`}
       >
         <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#3b0764,_#020617_55%)]">
-          {children}
+        {children}
         </div>
       </body>
     </html>
