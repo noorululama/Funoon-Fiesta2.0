@@ -24,8 +24,8 @@ export function JuryCardWrapper({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Generate avatar URL based on name
-  const avatarUrl = `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&seed=${encodeURIComponent(jury.name)}`;
+  // Use jury's avatar or fallback to default
+  const avatarUrl = jury.avatar || "/img/jury.webp";
 
   const handleDelete = async () => {
     setIsDeleting(true);

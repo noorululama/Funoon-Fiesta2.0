@@ -34,6 +34,7 @@ export interface Jury {
   id: string;
   name: string;
   password: string;
+  avatar?: string;
 }
 
 export interface AssignedProgram {

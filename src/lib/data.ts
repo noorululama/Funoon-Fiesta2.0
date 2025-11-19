@@ -129,7 +129,25 @@ export async function getPrograms(): Promise<Program[]> {
 export async function getJuries(): Promise<Jury[]> {
   await ensureSeedData();
   const juries = await JuryModel.find().lean<Jury[]>();
-  return normalize(juries);
+  const normalized = normalize(juries);
+  
+  // Ensure all juries have an avatar - assign and persist if missing (only once)
+  // Once set, avatar is never changed
+  const juriesWithAvatars = await Promise.all(
+    normalized.map(async (jury) => {
+      if (!jury.avatar) {
+        // Assign random avatar only if missing - this will be saved permanently
+        const avatar = getRandomJuryAvatar();
+        await connectDB();
+        await JuryModel.updateOne({ id: jury.id }, { $set: { avatar } });
+        return { ...jury, avatar };
+      }
+      // Avatar already exists - return as-is (never change it)
+      return jury;
+    })
+  );
+  
+  return juriesWithAvatars;
 }
 
 export async function getAssignments(): Promise<AssignedProgram[]> {
@@ -206,14 +224,35 @@ export async function deleteStudentById(id: string) {
   await StudentModel.deleteOne({ id });
 }
 
+// Available jury avatar images
+const JURY_AVATARS = [
+  "/img/jury.webp",
+  "/img/jury1.webp",
+  "/img/jury2.webp",
+  "/img/jury3.webp",
+  "/img/jury4.webp",
+];
+
+function getRandomJuryAvatar(): string {
+  return JURY_AVATARS[Math.floor(Math.random() * JURY_AVATARS.length)];
+}
+
 export async function createJury(input: Omit<Jury, "id">) {
   await connectDB();
-  await JuryModel.create({ ...input, id: `jury-${randomUUID().slice(0, 8)}` });
+  // Assign random avatar if not provided - once set, it never changes
+  const avatar = input.avatar || getRandomJuryAvatar();
+  await JuryModel.create({ 
+    ...input, 
+    id: `jury-${randomUUID().slice(0, 8)}`,
+    avatar, // Avatar is set once at creation and never changes
+  });
 }
 
 export async function updateJuryById(id: string, data: Partial<Omit<Jury, "id">>) {
   await connectDB();
-  await JuryModel.updateOne({ id }, data);
+  // Explicitly exclude avatar from updates - avatars are immutable once set
+  const { avatar, ...updateData } = data;
+  await JuryModel.updateOne({ id }, updateData);
 }
 
 export async function deleteJuryById(id: string) {
@@ -490,7 +529,7 @@ const defaultAssignments: AssignedProgram[] = [
 ];
 
 const defaultJury: Jury[] = [
-  { id: "jury-anika", name: "Anika Raman", password: "anika@jury" },
-  { id: "jury-dev", name: "Dev Jain", password: "dev@jury" },
-  { id: "jury-sahana", name: "Sahana Biju", password: "sahana@jury" },
+  { id: "jury-anika", name: "Anika Raman", password: "anika@jury", avatar: "/img/jury.webp" },
+  { id: "jury-dev", name: "Dev Jain", password: "dev@jury", avatar: "/img/jury1.webp" },
+  { id: "jury-sahana", name: "Sahana Biju", password: "sahana@jury", avatar: "/img/jury2.webp" },
 ];

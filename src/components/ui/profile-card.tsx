@@ -94,7 +94,7 @@ export function ProfileCard({
           <div className="flex flex-wrap items-start gap-4 sm:gap-5">
             <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-fuchsia-400/30 shadow-lg">
               <Image
-                src={'/img/jury.webp'}
+                src={avatarSrc}
                 alt={`${name} avatar`}
                 fill
                 sizes="(max-width: 640px) 64px, 80px"
