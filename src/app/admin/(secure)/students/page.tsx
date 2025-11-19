@@ -202,8 +202,8 @@ export default async function StudentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-row gap-4 ">
-      <Card className="flex-1">
+      <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="h-full">
         <CardTitle>Add Student</CardTitle>
         <CardDescription className="mt-2">
           Maintain a searchable roster for quick result entry.
@@ -226,7 +226,7 @@ export default async function StudentsPage() {
           </Button>
         </form>
       </Card>
-      <Card>
+      <Card className="h-full">
         <CardTitle>Bulk Import Students (CSV)</CardTitle>
         <CardDescription className="mt-2">
           Required columns: <code>name, chest_no</code> and either <code>team_id</code> or <code>team_name</code>

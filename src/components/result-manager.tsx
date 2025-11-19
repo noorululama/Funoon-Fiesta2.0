@@ -224,7 +224,7 @@ export function ResultManager({
       </div>
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-widest text-white/50">
+        <div className="hidden items-center gap-4 text-xs uppercase tracking-widest text-white/50 lg:flex">
           <span className="flex-1">Program & Jury</span>
           <span>Winners</span>
           <span>Score</span>
@@ -242,8 +242,8 @@ export function ResultManager({
               key={result.id}
               className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/70 via-slate-900/40 to-slate-800/40 px-4 py-4 shadow-[0_15px_60px_rgba(15,23,42,0.45)] transition hover:border-fuchsia-400/40"
             >
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[200px]">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                <div className="w-full xl:flex-1">
                   <p className="text-sm text-white/40">#{result.id.slice(0, 8)}</p>
                   <p className="text-lg font-semibold text-white">{program?.name ?? "Unknown Program"}</p>
                   <p className="text-xs text-white/60 flex items-center gap-1 mt-1">
@@ -251,7 +251,7 @@ export function ResultManager({
                     {jury?.name ?? "Unknown Jury"}
                   </p>
                 </div>
-                <div className="flex gap-2 min-w-[200px]">
+                <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:gap-3 xl:max-w-md">
                   {result.entries.map((entry) => (
                     <div
                       key={entry.position}
@@ -265,11 +265,11 @@ export function ResultManager({
                     </div>
                   ))}
                 </div>
-                <div className="text-center min-w-[80px]">
+                <div className="text-center w-full sm:w-auto">
                   <p className="text-lg font-bold text-emerald-300">{totalScore}</p>
                   <p className="text-xs text-white/50">Total</p>
                 </div>
-                <div className="text-sm text-white/70 min-w-[150px]">
+                <div className="text-sm text-white/70 w-full sm:w-auto">
                   <p className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {new Date(result.submitted_at).toLocaleDateString()}
@@ -278,7 +278,7 @@ export function ResultManager({
                     {new Date(result.submitted_at).toLocaleTimeString()}
                   </p>
                 </div>
-                <div className="ml-auto flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 w-full xl:ml-auto xl:w-auto xl:justify-end">
                   <Button
                     type="button"
                     variant="secondary"

@@ -292,8 +292,8 @@ export function ProgramManager({
               key={program.id}
               className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/70 via-slate-900/40 to-slate-800/40 px-4 py-4 shadow-[0_15px_60px_rgba(15,23,42,0.45)] transition hover:border-fuchsia-400/40"
             >
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -305,7 +305,7 @@ export function ProgramManager({
                     <p className="text-lg font-semibold text-white">{program.name}</p>
                   </div>
                 </div>
-                <div className="flex flex-1 flex-wrap gap-3 text-xs font-semibold uppercase tracking-wide text-white/60">
+                <div className="flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-wide text-white/60 w-full xl:flex-1">
                   <span className="rounded-full border border-white/15 px-3 py-1 capitalize">
                     {program.section}
                   </span>
@@ -316,10 +316,10 @@ export function ProgramManager({
                     {program.stage ? "On stage" : "Off stage"}
                   </span>
                 </div>
-                <div className="text-sm text-white/70">
+                <div className="text-sm text-white/70 w-full xl:w-auto">
                   Last updated · <span className="text-white/50">Auto</span>
                 </div>
-                <div className="ml-auto flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 w-full xl:ml-auto xl:w-auto xl:justify-end">
                   <Button
                     type="button"
                     variant="secondary"

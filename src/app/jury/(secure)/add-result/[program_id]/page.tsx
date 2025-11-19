@@ -76,6 +76,8 @@ export default async function JuryAddResultPage({
         juries={[jury]}
         lockProgram
         action={jurySubmitResultAction}
+        mode="jury"
+        juryName={jury.name}
       />
     </div>
   );

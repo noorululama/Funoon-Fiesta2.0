@@ -201,8 +201,8 @@ export default async function ProgramsPage() {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-row gap-4 ">
-      <Card className="flex-1">
+      <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="h-full">
         <CardTitle>Create Program</CardTitle>
         <CardDescription className="mt-2">
           Add programs with section, stage and category metadata.
@@ -232,7 +232,7 @@ export default async function ProgramsPage() {
           </Button>
         </form>
       </Card>
-      <Card>
+      <Card className="h-full">
         <CardTitle>Bulk Import (CSV)</CardTitle>
         <CardDescription className="mt-2">
           Required columns: <code>name, section, stage, category</code>

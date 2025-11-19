@@ -26,6 +26,8 @@ interface AddResultFormProps {
     >
   >;
   submitLabel?: string;
+  mode?: "default" | "jury";
+  juryName?: string;
 }
 
 const gradeOptions = [
@@ -44,6 +46,8 @@ export function AddResultForm({
   lockProgram = false,
   initial,
   submitLabel = "Submit for Approval",
+  mode = "default",
+  juryName,
 }: AddResultFormProps) {
   const [programId, setProgramId] = useState(programs[0]?.id ?? "");
   const [showRules, setShowRules] = useState(false);
@@ -85,33 +89,51 @@ export function AddResultForm({
   );
 
   const isSingle = selectedProgram?.section === "single";
+  const isJuryMode = mode === "jury";
+  const activeJury = juries[0];
   const placementSelectOptions = isSingle ? studentOptions : teamOptions;
+  const showProgramSelector = !(isJuryMode && lockProgram);
 
   return (
     <form action={action} className="space-y-8">
       <input type="hidden" name="program_id" value={selectedProgram?.id} />
-      <Card>
-        <Badge tone="cyan">Step 1 · Program</Badge>
-        <CardTitle className="mt-4">Select a program</CardTitle>
-        <CardDescription className="mt-2">
-          We auto-fill stage, section, and scoring rules.
-        </CardDescription>
-        <div className="mt-6">
-          <SearchSelect
-            name="program_selector"
-            options={programOptions}
-            value={programId}
-            onValueChange={(next) => setProgramId(next)}
-            disabled={lockProgram}
-            placeholder="Search program..."
-          />
-        </div>
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
-          <p>Section: {selectedProgram?.section}</p>
-          <p>Stage: {selectedProgram?.stage ? "On stage" : "Off stage"}</p>
-          <p>Category: {selectedProgram?.category}</p>
-        </div>
-      </Card>
+      {isJuryMode && <input type="hidden" name="jury_id" value={activeJury?.id ?? ""} />}
+
+      {showProgramSelector && (
+        <Card>
+          <Badge tone="cyan">Step 1 · Program</Badge>
+          <CardTitle className="mt-4">
+            {isJuryMode && lockProgram ? "Program locked in" : "Select a program"}
+          </CardTitle>
+          <CardDescription className="mt-2">
+            {isJuryMode && lockProgram
+              ? "Admins have assigned this program to you. Review the details before entering results."
+              : "We auto-fill stage, section, and scoring rules."}
+          </CardDescription>
+          <div className="mt-6">
+            {isJuryMode && lockProgram ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/60">Program</p>
+                <p className="text-2xl font-semibold text-white">{selectedProgram?.name}</p>
+              </div>
+            ) : (
+              <SearchSelect
+                name="program_selector"
+                options={programOptions}
+                value={programId}
+                onValueChange={(next) => setProgramId(next)}
+                disabled={lockProgram}
+                placeholder="Search program..."
+              />
+            )}
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
+            <p>Section: {selectedProgram?.section}</p>
+            <p>Stage: {selectedProgram?.stage ? "On stage" : "Off stage"}</p>
+            <p>Category: {selectedProgram?.category}</p>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <Badge tone="pink">Step 2 · Winners</Badge>
@@ -131,6 +153,15 @@ export function AddResultForm({
             View scoring matrix
           </Button>
         </div>
+        {isJuryMode && !showProgramSelector && (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+            <p className="text-xs uppercase tracking-widest text-white/50">Program</p>
+            <p className="text-xl font-semibold text-white">{selectedProgram?.name}</p>
+            <p className="text-xs text-white/50 mt-1">
+              Section: {selectedProgram?.section} · Category: {selectedProgram?.category}
+            </p>
+          </div>
+        )}
         <div className="mt-6 grid gap-5">
           {[1, 2, 3].map((position) => (
             <div
@@ -174,31 +205,45 @@ export function AddResultForm({
             </div>
           ))}
         </div>
+        {isJuryMode && !showProgramSelector && (
+          <div className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+            <p className="text-xs uppercase tracking-widest text-white/50">Logged in as</p>
+            <p className="text-lg font-semibold text-white">{juryName ?? activeJury?.name}</p>
+            <p className="text-xs text-white/50">
+              Double-check placements before submitting — edits aren’t possible afterward.
+            </p>
+            <Button type="submit" className="mt-2 w-full">
+              Submit evaluation
+            </Button>
+          </div>
+        )}
       </Card>
 
-      <Card>
-        <Badge tone="emerald">Step 3 · Submit</Badge>
-        <CardTitle className="mt-4">Assign responsible jury</CardTitle>
-        <CardDescription className="mt-2">
-          Once you submit, the record lands in Pending Results for approval.
-        </CardDescription>
-        <Select
-          className="mt-6"
-          name="jury_id"
-          required
-          defaultValue={juries[0]?.id}
-          disabled={lockProgram}
-        >
-          {juries.map((jury) => (
-            <option key={jury.id} value={jury.id}>
-              {jury.name}
-            </option>
-          ))}
-        </Select>
-        <Button type="submit" className="mt-4">
-          {submitLabel}
-        </Button>
-      </Card>
+      {!isJuryMode && (
+        <Card>
+          <Badge tone="emerald">Step 3 · Submit</Badge>
+          <CardTitle className="mt-4">Assign responsible jury</CardTitle>
+          <CardDescription className="mt-2">
+            Once you submit, the record lands in Pending Results for approval.
+          </CardDescription>
+          <Select
+            className="mt-6"
+            name="jury_id"
+            required
+            defaultValue={juries[0]?.id}
+            disabled={lockProgram}
+          >
+            {juries.map((jury) => (
+              <option key={jury.id} value={jury.id}>
+                {jury.name}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" className="mt-4">
+            {submitLabel}
+          </Button>
+        </Card>
+      )}
       <Modal
         open={showRules}
         onClose={() => setShowRules(false)}

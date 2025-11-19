@@ -29,7 +29,7 @@ export function ProfileCard({
   name = "Jury Member",
   role = "Event Judge",
   email,
-  avatarSrc = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+  avatarSrc = "",
   statusText = "Active",
   statusColor = "bg-lime-500",
   glowText = "Currently Evaluating Programs",

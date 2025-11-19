@@ -242,7 +242,7 @@ export function AssignmentManager({
       {/* Content */}
       {viewMode === "by-jury" ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-white">Assignments by Jury</h3>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={expandAll}>
@@ -288,7 +288,7 @@ export function AssignmentManager({
                   >
                     <CardContent className="p-4 hover:bg-white/5 transition-colors">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                           <div className="h-12 w-12 rounded-full bg-gradient-to-br from-fuchsia-500/20 to-rose-500/20 flex items-center justify-center ring-2 ring-fuchsia-400/30">
                             <Users className="h-6 w-6 text-fuchsia-300" />
                           </div>
@@ -343,7 +343,7 @@ export function AssignmentManager({
                               animate={{ opacity: 1, x: 0 }}
                               className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-all"
                             >
-                              <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3 mb-2">
                                     <Award className="h-4 w-4 text-fuchsia-400 shrink-0" />
@@ -359,7 +359,7 @@ export function AssignmentManager({
                                     <span>{programStage ? "On Stage" : "Off Stage"}</span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 lg:justify-end">
                                   <div
                                     className={cn(
                                       "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
@@ -431,7 +431,7 @@ export function AssignmentManager({
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/70 to-slate-800/50 p-4 hover:border-fuchsia-400/40 transition-all"
               >
-                <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <Award className="h-5 w-5 text-fuchsia-400 shrink-0" />
@@ -448,7 +448,7 @@ export function AssignmentManager({
                       <span>Cat {programCategory}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 lg:justify-end">
                     <div
                       className={cn(
                         "flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium shrink-0",
