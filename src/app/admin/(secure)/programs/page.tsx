@@ -15,13 +15,19 @@ import {
 import { getProgramRegistrations, removeRegistrationsByProgram } from "@/lib/team-data";
 import { ProgramManager } from "@/components/program-manager";
 
+// Allow larger candidate limits so that big group/general programs can have many participants.
+// We keep a reasonable safety upper bound (e.g. 500) to avoid accidental huge numbers.
 const programSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2, "Program name is required"),
   section: z.enum(["single", "group", "general"]),
   stage: z.enum(["true", "false"]),
   category: z.enum(["A", "B", "C", "none"]),
-  candidateLimit: z.coerce.number().min(1).max(10).default(1),
+  candidateLimit: z
+    .coerce.number()
+    .min(1, "candidateLimit must be at least 1")
+    .max(500, "candidateLimit must be at most 500")
+    .default(1),
 });
 
 const csvRowSchema = z.object({
@@ -36,10 +42,10 @@ const csvRowSchema = z.object({
     .transform((value) => value === "true")
     .pipe(z.boolean()),
   category: z.enum(["A", "B", "C", "none"]),
-  candidate_limit: z.coerce.number().min(1, "candidate_limit must be at least 1").max(
-    10,
-    "candidate_limit must be at most 10",
-  ),
+  candidate_limit: z
+    .coerce.number()
+    .min(1, "candidate_limit must be at least 1")
+    .max(500, "candidate_limit must be at most 500"),
 });
 
 async function mutateProgram(

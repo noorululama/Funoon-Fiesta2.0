@@ -10,6 +10,7 @@ import {
   isRegistrationOpen,
   registerCandidate,
   removeProgramRegistration,
+  validateParticipationLimit,
 } from "@/lib/team-data";
 
 function redirectWithMessage(message: string, type: "error" | "success" = "error") {
@@ -53,6 +54,12 @@ async function registerProgramAction(formData: FormData) {
     redirectWithMessage("Student already registered for this program.");
   }
 
+  // Check participation limits
+  const limitCheck = validateParticipationLimit(studentId, program, programs, registrations);
+  if (!limitCheck.allowed) {
+    redirectWithMessage(limitCheck.reason || "Participation limit reached for this program type.");
+  }
+
   await registerCandidate({
     programId: program.id,
     programName: program.name,
@@ -64,6 +71,87 @@ async function registerProgramAction(formData: FormData) {
   });
   revalidatePath("/team/program-register");
   redirectWithMessage("Registration submitted.", "success");
+}
+
+async function registerMultipleStudentsAction(formData: FormData) {
+  "use server";
+  const [team, open] = await Promise.all([getCurrentTeam(), isRegistrationOpen()]);
+  if (!team) redirect("/team/login");
+  if (!open) redirectWithMessage("Registration window is closed.");
+
+  const programId = String(formData.get("programId") ?? "");
+  const studentIdsStr = String(formData.get("studentIds") ?? "");
+  if (!programId || !studentIdsStr) redirectWithMessage("Program and students are required.");
+
+  const studentIds = studentIdsStr.split(",").filter(Boolean);
+  if (studentIds.length === 0) redirectWithMessage("At least one student must be selected.");
+
+  const [programs, students, registrations] = await Promise.all([
+    getProgramsWithLimits(),
+    getPortalStudents(),
+    getProgramRegistrations(),
+  ]);
+  const program = programs.find((item) => item.id === programId);
+  if (!program) redirectWithMessage("Program not found.");
+
+  // Validate all students belong to the team
+  const teamStudents = students.filter((s) => s.teamId === team.id);
+  const selectedStudents = teamStudents.filter((s) => studentIds.includes(s.id));
+  if (selectedStudents.length !== studentIds.length) {
+    redirectWithMessage("You can only register your team members.");
+  }
+
+  // Check candidate limit
+  const teamEntries = registrations.filter(
+    (registration) => registration.programId === programId && registration.teamId === team.id,
+  );
+  if (teamEntries.length + selectedStudents.length > program.candidateLimit) {
+    redirectWithMessage(
+      `Cannot register ${selectedStudents.length} students. Only ${program.candidateLimit - teamEntries.length} slots remaining.`,
+    );
+  }
+
+  // Check for duplicates
+  const alreadyRegistered = selectedStudents.some((student) =>
+    registrations.some(
+      (registration) =>
+        registration.programId === programId && registration.studentId === student.id,
+    ),
+  );
+  if (alreadyRegistered) {
+    redirectWithMessage("One or more students are already registered for this program.");
+  }
+
+  // Check participation limits for each student
+  const limitViolations: string[] = [];
+  for (const student of selectedStudents) {
+    const limitCheck = validateParticipationLimit(student.id, program, programs, registrations);
+    if (!limitCheck.allowed) {
+      limitViolations.push(`${student.name}: ${limitCheck.reason || "Participation limit reached"}`);
+    }
+  }
+  if (limitViolations.length > 0) {
+    redirectWithMessage(limitViolations.join("; "));
+  }
+
+  // Register all students
+  for (const student of selectedStudents) {
+    await registerCandidate({
+      programId: program.id,
+      programName: program.name,
+      studentId: student.id,
+      studentName: student.name,
+      studentChest: student.chestNumber,
+      teamId: team.id,
+      teamName: team.teamName,
+    });
+  }
+
+  revalidatePath("/team/program-register");
+  redirectWithMessage(
+    `Successfully registered ${selectedStudents.length} student${selectedStudents.length !== 1 ? "s" : ""}.`,
+    "success",
+  );
 }
 
 async function removeRegistrationAction(formData: FormData) {
@@ -125,10 +213,12 @@ export default async function ProgramRegisterPage({
 
       <TeamProgramRegister
         programs={programs}
+        allPrograms={programs}
         teamRegistrations={teamRegistrations}
         teamStudents={teamStudents}
         isOpen={open}
         registerAction={registerProgramAction}
+        registerMultipleAction={registerMultipleStudentsAction}
         removeAction={removeRegistrationAction}
       />
     </div>

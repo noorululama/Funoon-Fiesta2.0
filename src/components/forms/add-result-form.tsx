@@ -79,11 +79,13 @@ export function AddResultForm({
       return initialPenalties.map((penalty, index) => ({
         id: `penalty-${index}`,
         defaultTarget: penalty.targetId,
-        defaultPoints: penalty.points,
+        // Respect existing values; only fall back to 5 when nothing is set
+        defaultPoints: typeof penalty.points === "number" ? penalty.points : 5,
         type: penalty.type,
       }));
     }
-    return [{ id: "penalty-0" }];
+    // No penalty rows visible until user explicitly adds one
+    return [];
   });
   const selectedProgram = useMemo(
     () => programs.find((program) => program.id === programId) ?? programs[0],
@@ -169,12 +171,14 @@ export function AddResultForm({
       ...rows,
       {
         id: `penalty-${Math.random().toString(36).slice(2, 9)}`,
+        // New rows default to 5 penalty points, but remain fully editable
+        defaultPoints: 5,
       },
     ]);
   };
 
   const removePenaltyRow = (rowId: string) => {
-    setPenaltyRows((rows) => (rows.length === 1 ? rows : rows.filter((row) => row.id !== rowId)));
+    setPenaltyRows((rows) => rows.filter((row) => row.id !== rowId));
   };
   const hasEligibleCandidates = placementSelectOptions.length > 0;
   const showProgramSelector = !(isJuryMode && lockProgram);
@@ -315,60 +319,10 @@ export function AddResultForm({
         )}
       </Card>
 
-      <Card>
-        <Badge tone="amber">Optional · Minus Points</Badge>
-        <CardTitle className="mt-4">No-show penalty</CardTitle>
-        <CardDescription className="mt-2">
-          Apply a deduction when a {isSingle ? "registered participant" : "team"} fails to appear.
-          Leave blank to skip.
-        </CardDescription>
-        <input type="hidden" name="penalty_rows" value={penaltyRowIds.join(",")} />
-        <div className="mt-6 space-y-4">
-          {penaltyRows.map((row) => {
-            const rowType = row.type ?? penaltyTypeDefault;
-            return (
-              <div
-                key={row.id}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4"
-              >
-                <input type="hidden" name={`penalty_type_${row.id}`} value={rowType} />
-                <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                  <div className="flex-1">
-                    <SearchSelect
-                      name={`penalty_target_${row.id}`}
-                      options={penaltySelectOptions}
-                      placeholder={`Select a ${isSingle ? "participant" : "team"} to penalize`}
-                      defaultValue={row.defaultTarget ?? ""}
-                      disabled={!hasPenaltyOptions}
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 md:w-60">
-                    <Input
-                      name={`penalty_points_${row.id}`}
-                      type="number"
-                      min={0}
-                      step={1}
-                      placeholder="Penalty points"
-                      defaultValue={row.defaultPoints ?? ""}
-                      disabled={!hasPenaltyOptions}
-                      
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-xs text-white/80"
-                      onClick={() => removePenaltyRow(row.id)}
-                      disabled={penaltyRows.length === 1}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
+      <input type="hidden" name="penalty_rows" value={penaltyRowIds.join(",")} />
+      {penaltyRows.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-white/80">Need to deduct points for a no-show?</p>
           <Button
             type="button"
             variant="secondary"
@@ -378,10 +332,72 @@ export function AddResultForm({
             Add penalty
           </Button>
         </div>
-        <p className="mt-3 text-xs text-white/50">
-          Enter the number of points to deduct. Each entry reduces the team total only.
-        </p>
-      </Card>
+      ) : (
+        <Card>
+          <Badge tone="amber">Optional · Minus Points</Badge>
+          <CardTitle className="mt-4">No-show penalty</CardTitle>
+          <CardDescription className="mt-2">
+            Apply a deduction when a {isSingle ? "registered participant" : "team"} fails to appear.
+            Leave blank to skip.
+          </CardDescription>
+          <div className="mt-6 space-y-4">
+            {penaltyRows.map((row) => {
+              const rowType = row.type ?? penaltyTypeDefault;
+              return (
+                <div
+                  key={row.id}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <input type="hidden" name={`penalty_type_${row.id}`} value={rowType} />
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                    <div className="flex-1">
+                      <SearchSelect
+                        name={`penalty_target_${row.id}`}
+                        options={penaltySelectOptions}
+                        placeholder={`Select a ${isSingle ? "participant" : "team"} to penalize`}
+                        defaultValue={row.defaultTarget ?? ""}
+                        disabled={!hasPenaltyOptions}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 md:w-60">
+                      <Input
+                        name={`penalty_points_${row.id}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder="Penalty points"
+                        defaultValue={row.defaultPoints ?? 5}
+                        disabled={!hasPenaltyOptions}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-xs text-white/80"
+                        onClick={() => removePenaltyRow(row.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={addPenaltyRow}
+              disabled={!hasPenaltyOptions}
+            >
+              Add penalty
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-white/50">
+            Enter the number of points to deduct. Each entry reduces the team total only.
+          </p>
+        </Card>
+      )}
 
       {!isJuryMode && (
       <Card>
