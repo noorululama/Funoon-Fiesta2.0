@@ -8,10 +8,11 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  size?: "sm" | "md" | "lg" | "xl";
   actions?: React.ReactNode;
 }
 
-export function Modal({ open, title, onClose, children, actions }: ModalProps) {
+export function Modal({ open, title, onClose, children, actions, size = "md" }: ModalProps) {
   useEffect(() => {
     function handleEsc(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -24,9 +25,16 @@ export function Modal({ open, title, onClose, children, actions }: ModalProps) {
 
   if (!open) return null;
 
+  const sizeClasses = {
+    sm: "max-w-md",
+    md: "max-w-lg",
+    lg: "max-w-2xl",
+    xl: "max-w-4xl",
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl shadow-rose-500/20 backdrop-blur-2xl">
+      <div className={cn("w-full rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-2xl shadow-rose-500/20 backdrop-blur-2xl", sizeClasses[size])}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
