@@ -694,29 +694,31 @@ export function TeamPortalManager({
         open={Boolean(deleteConfirm)}
         onClose={() => setDeleteConfirm(null)}
         title="Delete Team"
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-          </>
-        }
       >
         {deleteConfirm && (
           <div className="space-y-4">
             <p className="text-sm text-white/70">
-              Are you sure you want to delete this team? This action cannot be undone.
+              Are you sure you want to delete this team? This action cannot be undone. This will also delete all students and registrations associated with this team.
             </p>
             <form action={deleteAction}>
               <input type="hidden" name="teamId" value={deleteConfirm} />
-              <Button
-                type="submit"
-                variant="danger"
-                className="w-full"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                Delete Team
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="danger"
+                  className="flex-1"
+                >
+                  Delete Team
+                </Button>
+              </div>
             </form>
           </div>
         )}

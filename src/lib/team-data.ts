@@ -15,6 +15,7 @@ import {
   StudentModel,
   TeamModel,
 } from "./models";
+import { connectDB } from "./db";
 
 function sanitizeColor(color?: string) {
   if (!color) return "#0ea5e9";
@@ -54,6 +55,7 @@ export async function savePortalTeam(team: PortalTeam) {
 }
 
 export async function deletePortalTeam(teamId: string) {
+  await connectDB();
   await TeamModel.deleteOne({ id: teamId });
   await StudentModel.deleteMany({ team_id: teamId });
   await ProgramRegistrationModel.deleteMany({ teamId });
