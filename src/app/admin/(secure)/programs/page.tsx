@@ -8,6 +8,7 @@ import {
   assignProgramToJury,
   createProgram,
   deleteProgramById,
+  getApprovedResults,
   getJuries,
   getPrograms,
   updateProgramById,
@@ -140,9 +141,36 @@ async function bulkAssignProgramsAction(formData: FormData) {
     throw new Error(parsed.error.issues.map((issue) => issue.message).join(", "));
   }
   const { program_ids, jury_id } = parsed.data;
+  const errors: string[] = [];
+  let successCount = 0;
+  
   for (const programId of program_ids) {
-    await assignProgramToJury(programId, jury_id);
+    try {
+      await assignProgramToJury(programId, jury_id);
+      successCount++;
+    } catch (error: any) {
+      // Collect errors but continue processing other assignments
+      if (error.message.includes("already assigned")) {
+        // Silently skip if already assigned (idempotent operation)
+        successCount++;
+      } else if (error.message.includes("already published")) {
+        // Skip approved programs with a clear error message
+        errors.push(`Program ${programId}: ${error.message}`);
+      } else {
+        errors.push(`Program ${programId}: ${error.message}`);
+      }
+    }
   }
+  
+  if (errors.length > 0 && successCount === 0) {
+    throw new Error(`All assignments failed: ${errors.join("; ")}`);
+  }
+  
+  if (errors.length > 0) {
+    // Partial success - could show a warning, but for now just log
+    console.warn("Some assignments had issues:", errors);
+  }
+  
   revalidatePath("/admin/assign");
   revalidatePath("/admin/programs");
 }

@@ -7,6 +7,7 @@ import { AssignmentManager } from "@/components/assignment-manager";
 import {
   assignProgramToJury,
   deleteAssignment,
+  getApprovedResults,
   getAssignments,
   getJuries,
   getPrograms,
@@ -28,7 +29,20 @@ async function assignProgramAction(formData: FormData) {
   }
 
   const payload = parsed.data;
-  await assignProgramToJury(payload.program_id, payload.jury_id);
+  try {
+    await assignProgramToJury(payload.program_id, payload.jury_id);
+  } catch (error: any) {
+    // Handle duplicate assignment error
+    if (error.message.includes("already assigned")) {
+      // Silently succeed if already assigned (idempotent operation)
+      // Could show a success message instead if desired
+    } else if (error.message.includes("already published")) {
+      // Show error for approved programs
+      throw new Error(error.message);
+    } else {
+      throw new Error(`Failed to assign program: ${error.message}`);
+    }
+  }
   revalidatePath("/admin/assign");
 }
 
@@ -46,14 +60,19 @@ async function deleteAssignmentAction(formData: FormData) {
 }
 
 export default async function AssignProgramPage() {
-  const [programs, juries, assignments] = await Promise.all([
+  const [programs, juries, assignments, approvedResults] = await Promise.all([
     getPrograms(),
     getJuries(),
     getAssignments(),
+    getApprovedResults(),
   ]);
 
+  // Filter out programs that are already approved/published
+  const approvedProgramIds = new Set(approvedResults.map((result) => result.program_id));
+  const availablePrograms = programs.filter((p) => !approvedProgramIds.has(p.id));
+
   // Ensure we have valid data
-  const validPrograms = programs.filter((p) => p?.id && p?.name);
+  const validPrograms = availablePrograms.filter((p) => p?.id && p?.name);
   const validJuries = juries.filter((j) => j?.id && j?.name);
   const validAssignments = assignments.filter(
     (a) => a?.program_id && a?.jury_id && a?.status,

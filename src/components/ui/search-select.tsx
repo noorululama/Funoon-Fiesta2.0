@@ -60,6 +60,10 @@ export function SearchSelect({
   }, [isControlled, value]);
 
   useEffect(() => {
+    // Don't auto-select if value is explicitly empty string in controlled mode
+    if (isControlled && selectedValue === "") {
+      return;
+    }
     if (!options.some((option) => option.value === selectedValue)) {
       const fallbackValue = options[0]?.value ?? "";
       if (!isControlled) {

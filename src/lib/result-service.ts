@@ -187,11 +187,23 @@ export async function submitResultToPending({
   if (!program) throw new Error("Program not found");
   if (!jury) throw new Error("Jury not found");
 
-  const alreadySubmitted =
-    (await PendingResultModel.exists({ program_id: programId })) ||
-    (await ApprovedResultModel.exists({ program_id: programId }));
-  if (alreadySubmitted) {
-    throw new Error("Result already exists for this program");
+  // Check for existing results (pending or approved) for this program
+  const [pendingResult, approvedResult] = await Promise.all([
+    PendingResultModel.findOne({ program_id: programId }).lean(),
+    ApprovedResultModel.findOne({ program_id: programId }).lean(),
+  ]);
+  
+  if (pendingResult) {
+    const existingJury = await JuryModel.findOne({ id: pendingResult.jury_id }).lean();
+    const juryName = existingJury?.name || "Unknown Jury";
+    throw new Error(
+      `A pending result already exists for program "${program.name}" submitted by ${juryName}. Please wait for admin approval or contact support.`
+    );
+  }
+  
+  if (approvedResult) {
+    // Return specific error message for published/approved programs
+    throw new Error("Program already published");
   }
 
   const entries = await buildEntries(program, winners);
@@ -208,8 +220,18 @@ export async function submitResultToPending({
     status: "pending",
   };
 
-  await PendingResultModel.create(record);
-  await updateAssignmentStatus(program.id, jury.id, "submitted");
+  try {
+    await PendingResultModel.create(record);
+    await updateAssignmentStatus(program.id, jury.id, "submitted");
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000) for program_id unique index
+    if (error.code === 11000 && error.keyPattern?.program_id) {
+      throw new Error(
+        `A result for program "${program.name}" already exists. This may have been submitted by another jury. Please refresh and check.`
+      );
+    }
+    throw error;
+  }
 
   revalidatePath("/admin/pending-results");
   revalidatePath("/jury/programs");

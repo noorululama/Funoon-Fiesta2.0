@@ -60,15 +60,24 @@ async function registerProgramAction(formData: FormData) {
     redirectWithMessage(limitCheck.reason || "Participation limit reached for this program type.");
   }
 
-  await registerCandidate({
-    programId: program.id,
-    programName: program.name,
-    studentId: student.id,
-    studentName: student.name,
-    studentChest: student.chestNumber,
-    teamId: team.id,
-    teamName: team.teamName,
-  });
+  try {
+    await registerCandidate({
+      programId: program.id,
+      programName: program.name,
+      studentId: student.id,
+      studentName: student.name,
+      studentChest: student.chestNumber,
+      teamId: team.id,
+      teamName: team.teamName,
+    });
+  } catch (error: any) {
+    // Handle duplicate registration error (race condition protection)
+    if (error.message.includes("already registered")) {
+      redirectWithMessage(error.message);
+    }
+    redirectWithMessage(`Registration failed: ${error.message}`);
+  }
+  
   revalidatePath("/team/program-register");
   redirectWithMessage("Registration submitted.", "success");
 }
@@ -134,22 +143,43 @@ async function registerMultipleStudentsAction(formData: FormData) {
     redirectWithMessage(limitViolations.join("; "));
   }
 
-  // Register all students
+  // Register all students with error handling
+  const registrationErrors: string[] = [];
+  let successCount = 0;
+  
   for (const student of selectedStudents) {
-    await registerCandidate({
-      programId: program.id,
-      programName: program.name,
-      studentId: student.id,
-      studentName: student.name,
-      studentChest: student.chestNumber,
-      teamId: team.id,
-      teamName: team.teamName,
-    });
+    try {
+      await registerCandidate({
+        programId: program.id,
+        programName: program.name,
+        studentId: student.id,
+        studentName: student.name,
+        studentChest: student.chestNumber,
+        teamId: team.id,
+        teamName: team.teamName,
+      });
+      successCount++;
+    } catch (error: any) {
+      // Handle duplicate registration error
+      if (error.message.includes("already registered")) {
+        registrationErrors.push(`${student.name}: ${error.message}`);
+      } else {
+        registrationErrors.push(`${student.name}: Registration failed - ${error.message}`);
+      }
+    }
   }
 
   revalidatePath("/team/program-register");
+  
+  if (registrationErrors.length > 0) {
+    const errorMessage = registrationErrors.length === selectedStudents.length
+      ? `Registration failed: ${registrationErrors.join("; ")}`
+      : `Partially completed: ${successCount} registered, ${registrationErrors.length} failed. ${registrationErrors.join("; ")}`;
+    redirectWithMessage(errorMessage);
+  }
+  
   redirectWithMessage(
-    `Successfully registered ${selectedStudents.length} student${selectedStudents.length !== 1 ? "s" : ""}.`,
+    `Successfully registered ${successCount} student${successCount !== 1 ? "s" : ""}.`,
     "success",
   );
 }

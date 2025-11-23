@@ -38,6 +38,8 @@ const StudentSchema = new Schema<Student>(
   },
   { timestamps: true },
 );
+// Unique index for chest numbers to prevent duplicates globally
+StudentSchema.index({ chest_no: 1 }, { unique: true });
 
 const ProgramSchema = new Schema<Program>(
   {
@@ -89,6 +91,8 @@ const ProgramRegistrationSchema = new Schema<ProgramRegistration>(
   },
   { timestamps: true },
 );
+// Unique index to prevent duplicate program registrations (same student in same program)
+ProgramRegistrationSchema.index({ programId: 1, studentId: 1 }, { unique: true });
 
 const RegistrationScheduleSchema = new Schema<RegistrationSchedule & { key: string }>(
   {
@@ -134,6 +138,9 @@ const ResultSchema = new Schema<ResultRecord>(
   },
   { timestamps: true },
 );
+// Unique index to ensure only one result (pending or approved) exists per program
+// This prevents duplicate result submissions for the same program
+ResultSchema.index({ program_id: 1 }, { unique: true });
 
 const LiveScoreSchema = new Schema<LiveScore>(
   {
@@ -192,6 +199,15 @@ const ReplacementRequestSchema = new Schema<ReplacementRequest>(
     reviewedBy: { type: String },
   },
   { timestamps: true },
+);
+// Unique index to prevent duplicate pending replacement requests
+// Only enforces uniqueness for pending requests (allows multiple approved/rejected)
+ReplacementRequestSchema.index(
+  { programId: 1, oldStudentId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "pending" },
+  },
 );
 
 export const ReplacementRequestModel =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import type {
   Jury,
   Program,
   ProgramRegistration,
+  ResultRecord,
   Student,
   Team,
 } from "@/lib/types";
@@ -23,6 +24,7 @@ interface AddResultFormProps {
   teams: Team[];
   juries: Jury[];
   registrations?: ProgramRegistration[];
+  approvedResults?: ResultRecord[]; // List of approved results to check against
   action: (formData: FormData) => Promise<void>;
   lockProgram?: boolean;
   initial?: Partial<
@@ -57,6 +59,7 @@ export function AddResultForm({
   teams,
   juries,
   registrations,
+  approvedResults = [],
   action,
   lockProgram = false,
   initial,
@@ -67,6 +70,12 @@ export function AddResultForm({
 }: AddResultFormProps) {
   const [programId, setProgramId] = useState(programs[0]?.id ?? "");
   const [showRules, setShowRules] = useState(false);
+  const [showPublishedModal, setShowPublishedModal] = useState(false);
+  // State to track selected winners for each position
+  const [winner1, setWinner1] = useState<string>(initial?.[1]?.winnerId ?? "");
+  const [winner2, setWinner2] = useState<string>(initial?.[2]?.winnerId ?? "");
+  const [winner3, setWinner3] = useState<string>(initial?.[3]?.winnerId ?? "");
+  const [duplicateError, setDuplicateError] = useState<string>("");
   const [penaltyRows, setPenaltyRows] = useState<
     {
       id: string;
@@ -91,6 +100,14 @@ export function AddResultForm({
     () => programs.find((program) => program.id === programId) ?? programs[0],
     [programId, programs],
   );
+
+  // Reset winners when program changes
+  useEffect(() => {
+    setWinner1(initial?.[1]?.winnerId ?? "");
+    setWinner2(initial?.[2]?.winnerId ?? "");
+    setWinner3(initial?.[3]?.winnerId ?? "");
+    setDuplicateError("");
+  }, [programId, initial]);
 
   const programOptions = useMemo(
     () =>
@@ -161,6 +178,22 @@ export function AddResultForm({
   const useFallbackOptions = registeredOptions.length === 0 && !isJuryMode;
   const placementSelectOptions = useFallbackOptions ? fallbackOptions : registeredOptions;
   const penaltySelectOptions = placementSelectOptions;
+
+  // Filter options to exclude already-selected candidates from other positions
+  const winner1Options = useMemo(() => {
+    const selected = [winner2, winner3].filter(Boolean);
+    return placementSelectOptions.filter(opt => !selected.includes(opt.value));
+  }, [placementSelectOptions, winner2, winner3]);
+
+  const winner2Options = useMemo(() => {
+    const selected = [winner1, winner3].filter(Boolean);
+    return placementSelectOptions.filter(opt => !selected.includes(opt.value));
+  }, [placementSelectOptions, winner1, winner3]);
+
+  const winner3Options = useMemo(() => {
+    const selected = [winner1, winner2].filter(Boolean);
+    return placementSelectOptions.filter(opt => !selected.includes(opt.value));
+  }, [placementSelectOptions, winner1, winner2]);
   const hasPenaltyOptions = penaltySelectOptions.length > 0;
   const penaltyTypeDefault =
     initialPenalties?.[0]?.type ?? (isSingle ? "student" : "team");
@@ -183,8 +216,59 @@ export function AddResultForm({
   const hasEligibleCandidates = placementSelectOptions.length > 0;
   const showProgramSelector = !(isJuryMode && lockProgram);
 
+  // Check if the selected program is already approved/published
+  const isProgramPublished = useMemo(() => {
+    if (!programId || approvedResults.length === 0) return false;
+    return approvedResults.some((result) => result.program_id === programId);
+  }, [programId, approvedResults]);
+
+  // Handle form submission - check if program is published before submitting
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // Clear previous duplicate error
+    setDuplicateError("");
+    
+    // Check if program is already published before submission
+    if (isProgramPublished) {
+      setShowPublishedModal(true);
+      return;
+    }
+
+    // Validate that all three positions have different candidates
+    const winners = [winner1, winner2, winner3].filter(Boolean);
+    const uniqueWinners = new Set(winners);
+    
+    if (winners.length !== 3) {
+      setDuplicateError("Please select candidates for all three positions.");
+      return;
+    }
+    
+    if (uniqueWinners.size !== 3) {
+      setDuplicateError("1st, 2nd, and 3rd place must have different candidates. Please select unique candidates for each position.");
+      return;
+    }
+
+    // Create FormData from the form and submit
+    const formData = new FormData(e.currentTarget);
+    try {
+      await action(formData);
+    } catch (error: any) {
+      // Handle backend error for published programs
+      const errorMessage = error?.message || String(error);
+      if (errorMessage.includes("Program already published") || errorMessage.includes("already published")) {
+        setShowPublishedModal(true);
+        return;
+      }
+      // For other errors, let Next.js handle them (they'll show in the UI)
+      // Re-throw to allow Next.js error handling
+      throw error;
+    }
+  };
+
   return (
-    <form action={action} className="space-y-8">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-8">
       <input type="hidden" name="program_id" value={selectedProgram?.id} />
       {isJuryMode && <input type="hidden" name="jury_id" value={activeJury?.id ?? ""} />}
 
@@ -256,9 +340,19 @@ export function AddResultForm({
             No registered candidates for this program yet.
           </p>
         )}
+        {duplicateError && (
+          <p className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {duplicateError}
+          </p>
+        )}
         <div className="mt-6 grid gap-5">
           {[1, 2, 3].map((position) => {
             const slot = position as 1 | 2 | 3;
+            // Get the appropriate options and state for each position
+            const positionOptions = position === 1 ? winner1Options : position === 2 ? winner2Options : winner3Options;
+            const positionValue = position === 1 ? winner1 : position === 2 ? winner2 : winner3;
+            const positionSetter = position === 1 ? setWinner1 : position === 2 ? setWinner2 : setWinner3;
+            
             return (
             <div
               key={position}
@@ -275,12 +369,12 @@ export function AddResultForm({
                 <SearchSelect
                   name={`winner_${position}`}
                   required
-                  defaultValue={
-                    initial?.[slot]?.winnerId ??
-                    placementSelectOptions[0]?.value ??
-                    ""
-                  }
-                  options={placementSelectOptions}
+                  value={positionValue}
+                  onValueChange={(value) => {
+                    positionSetter(value);
+                    setDuplicateError(""); // Clear error when user changes selection
+                  }}
+                  options={positionOptions}
                   placeholder={`Search ${isSingle ? "student" : "team"}...`}
                   disabled={!hasEligibleCandidates}
                 />
@@ -450,7 +544,22 @@ export function AddResultForm({
           </div>
         </div>
       </Modal>
+      
+      {/* Published Program Modal */}
+      <Modal
+        open={showPublishedModal}
+        onClose={() => setShowPublishedModal(false)}
+        title="Program Already Published"
+        actions={
+          <Button type="button" variant="secondary" onClick={() => setShowPublishedModal(false)}>
+            Close
+          </Button>
+        }
+      >
+        <p className="text-white/90">This program is already published.</p>
+      </Modal>
     </form>
+    </>
   );
 }
 

@@ -192,6 +192,15 @@ async function importStudentsAction(formData: FormData) {
   const teamIds = new Set(teams.map((team) => team.id));
   const teamNameToId = new Map(teams.map((team) => [team.name.toUpperCase(), team.id]));
   
+  // Get all existing students once to check for duplicates
+  const existingStudents = await getStudents();
+  const existingChestNumbers = new Set(
+    existingStudents.map((s) => s.chest_no.trim().toUpperCase())
+  );
+  
+  // Track chest numbers within this import batch to prevent duplicates in the same CSV
+  const importBatchChestNumbers = new Set<string>();
+  
   for (const entry of entries) {
     // Skip empty rows
     if (!entry.data.name || !entry.data.name.trim()) {
@@ -234,14 +243,43 @@ async function importStudentsAction(formData: FormData) {
       throw new Error(`Row ${entry.row}: Team not found`);
     }
     
-    const students = await getStudents();
-    const chest_no = parsed.data.chest_no?.trim() || generateNextChestNumber(team.name, students);
+    // Generate or use provided chest number, normalized to uppercase
+    let chest_no = parsed.data.chest_no?.trim().toUpperCase() || generateNextChestNumber(team.name, existingStudents);
     
-    await createStudent({
-      name: parsed.data.name,
-      team_id: resolvedTeamId,
-      chest_no,
-    });
+    // Check for duplicate chest number in existing database
+    if (existingChestNumbers.has(chest_no)) {
+      const existingStudent = existingStudents.find((s) => s.chest_no.toUpperCase() === chest_no);
+      throw new Error(
+        `Row ${entry.row}: Chest number "${chest_no}" already exists in database (assigned to "${existingStudent?.name || "unknown student"}").`
+      );
+    }
+    
+    // Check for duplicate chest number within this import batch
+    if (importBatchChestNumbers.has(chest_no)) {
+      throw new Error(
+        `Row ${entry.row}: Chest number "${chest_no}" is duplicated within this CSV file. Each chest number must be unique.`
+      );
+    }
+    
+    // Add to batch tracking
+    importBatchChestNumbers.add(chest_no);
+    
+    try {
+      await createStudent({
+        name: parsed.data.name,
+        team_id: resolvedTeamId,
+        chest_no,
+      });
+      
+      // Add to existing set to prevent duplicates in subsequent rows of the same import
+      existingChestNumbers.add(chest_no);
+    } catch (error: any) {
+      // Provide user-friendly error message
+      if (error.message.includes("Chest number")) {
+        throw new Error(`Row ${entry.row}: ${error.message}`);
+      }
+      throw new Error(`Row ${entry.row}: Failed to create student - ${error.message}`);
+    }
   }
   revalidatePath("/admin/students");
 }

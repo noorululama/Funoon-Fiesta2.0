@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { ReplacementRequestForm } from "@/components/replacement-request-form";
 import { getCurrentTeam } from "@/lib/auth";
+import { getApprovedResults } from "@/lib/data";
 import {
   createReplacementRequest,
   getPortalStudents,
   getProgramRegistrations,
   getProgramsWithLimits,
+  getReplacementRequests,
   isRegistrationOpen,
 } from "@/lib/team-data";
 
@@ -39,15 +41,22 @@ async function submitReplacementRequestAction(formData: FormData) {
     redirectWithMessage("Old and new students must be different.");
   }
 
-  const [programs, students, registrations] = await Promise.all([
+  const [programs, students, registrations, approvedResults] = await Promise.all([
     getProgramsWithLimits(),
     getPortalStudents(),
     getProgramRegistrations(),
+    getApprovedResults(),
   ]);
 
   const program = programs.find((p) => p.id === programId);
   if (!program) {
     redirectWithMessage("Program not found.");
+  }
+
+  // Prevent replacement requests for approved/published programs
+  const isProgramApproved = approvedResults.some((result) => result.program_id === programId);
+  if (isProgramApproved) {
+    redirectWithMessage("This program is already published. Replacement requests are not allowed for published programs.");
   }
 
   const oldStudent = students.find((s) => s.id === oldStudentId);
@@ -74,22 +83,44 @@ async function submitReplacementRequestAction(formData: FormData) {
     redirectWithMessage("The new student is already registered for this program.");
   }
 
-  await createReplacementRequest({
-    programId: program.id,
-    programName: program.name,
-    oldStudentId: oldStudent.id,
-    oldStudentName: oldStudent.name,
-    oldStudentChest: oldStudent.chestNumber,
-    newStudentId: newStudent.id,
-    newStudentName: newStudent.name,
-    newStudentChest: newStudent.chestNumber,
-    teamId: team.id,
-    teamName: team.teamName,
-    reason,
-  });
+  // Check for duplicate pending replacement requests
+  const existingRequests = await getReplacementRequests(team.id);
+  const duplicateRequest = existingRequests.some(
+    (req) =>
+      req.programId === programId &&
+      req.oldStudentId === oldStudentId &&
+      req.status === "pending",
+  );
+  if (duplicateRequest) {
+    redirectWithMessage(
+      `A pending replacement request already exists for "${oldStudent.name}" in program "${program.name}". Please wait for admin approval or contact support.`,
+    );
+  }
 
-  revalidatePath("/team/replacement-request");
-  redirectWithMessage("Replacement request submitted successfully. Waiting for admin approval.", "success");
+  try {
+    await createReplacementRequest({
+      programId: program.id,
+      programName: program.name,
+      oldStudentId: oldStudent.id,
+      oldStudentName: oldStudent.name,
+      oldStudentChest: oldStudent.chestNumber,
+      newStudentId: newStudent.id,
+      newStudentName: newStudent.name,
+      newStudentChest: newStudent.chestNumber,
+      teamId: team.id,
+      teamName: team.teamName,
+      reason,
+    });
+    
+    revalidatePath("/team/replacement-request");
+    redirectWithMessage("Replacement request submitted successfully. Waiting for admin approval.", "success");
+  } catch (error: any) {
+    // Handle duplicate key error from database (race condition protection)
+    if (error.message.includes("pending replacement request already exists")) {
+      redirectWithMessage(error.message);
+    }
+    redirectWithMessage(`Failed to submit replacement request: ${error.message}`);
+  }
 }
 
 export default async function ReplacementRequestPage({
@@ -100,12 +131,17 @@ export default async function ReplacementRequestPage({
   const team = await getCurrentTeam();
   if (!team) redirect("/team/login");
 
-  const [programs, registrations, students, isOpen] = await Promise.all([
+  const [programs, registrations, students, isOpen, approvedResults] = await Promise.all([
     getProgramsWithLimits(),
     getProgramRegistrations(),
     getPortalStudents(),
     isRegistrationOpen(),
+    getApprovedResults(),
   ]);
+
+  // Filter out programs that are already approved/published
+  const approvedProgramIds = new Set(approvedResults.map((result) => result.program_id));
+  const availablePrograms = programs.filter((program) => !approvedProgramIds.has(program.id));
 
   const teamRegistrations = registrations.filter((r) => r.teamId === team.id);
   const teamStudents = students.filter((s) => s.teamId === team.id);
@@ -142,6 +178,12 @@ export default async function ReplacementRequestPage({
             page to make changes directly.
           </p>
         </Card>
+      ) : availablePrograms.length === 0 ? (
+        <Card className="border-amber-500/40 bg-amber-500/10 p-6">
+          <p className="text-sm text-white/90">
+            No programs available for replacement requests. All programs with registrations have been published.
+          </p>
+        </Card>
       ) : (
         <Card className="border-white/10 bg-white/5 p-6">
           <CardTitle>Submit Replacement Request</CardTitle>
@@ -150,7 +192,7 @@ export default async function ReplacementRequestPage({
           </CardDescription>
 
           <ReplacementRequestForm
-            programs={programs}
+            programs={availablePrograms}
             teamRegistrations={teamRegistrations}
             teamStudents={teamStudents}
             submitAction={submitReplacementRequestAction}

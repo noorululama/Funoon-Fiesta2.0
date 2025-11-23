@@ -168,6 +168,17 @@ export async function getApprovedResults(): Promise<ResultRecord[]> {
   return normalize(results);
 }
 
+/**
+ * Check if a program result is already approved/published
+ * @param programId - The program ID to check
+ * @returns true if the program has an approved result, false otherwise
+ */
+export async function isProgramResultApproved(programId: string): Promise<boolean> {
+  await ensureSeedData();
+  const approvedResult = await ApprovedResultModel.findOne({ program_id: programId }).lean();
+  return !!approvedResult;
+}
+
 export async function getPendingResultById(
   id: string,
 ): Promise<ResultRecord | null> {
@@ -205,11 +216,33 @@ export async function deleteProgramById(id: string) {
 
 export async function createStudent(input: Omit<Student, "id" | "total_points">) {
   await connectDB();
-  await StudentModel.create({
-    ...input,
-    id: randomUUID(),
-    total_points: 0,
-  });
+  
+  // Normalize chest number to uppercase for consistent comparison
+  const normalizedChestNo = input.chest_no.trim().toUpperCase();
+  
+  // Check for duplicate chest number
+  const existing = await StudentModel.findOne({ 
+    chest_no: normalizedChestNo 
+  }).lean();
+  
+  if (existing) {
+    throw new Error(`Chest number "${input.chest_no}" is already registered to student "${existing.name}".`);
+  }
+  
+  try {
+    await StudentModel.create({
+      ...input,
+      chest_no: normalizedChestNo,
+      id: randomUUID(),
+      total_points: 0,
+    });
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error.code === 11000) {
+      throw new Error(`Chest number "${input.chest_no}" is already registered.`);
+    }
+    throw error;
+  }
 }
 
 export async function updateStudentById(
@@ -217,7 +250,34 @@ export async function updateStudentById(
   data: Partial<Omit<Student, "id">>,
 ) {
   await connectDB();
-  await StudentModel.updateOne({ id }, data);
+  
+  // If chest_no is being updated, check for duplicates
+  if (data.chest_no) {
+    const normalizedChestNo = data.chest_no.trim().toUpperCase();
+    
+    // Check for duplicate chest number (excluding current student)
+    const existing = await StudentModel.findOne({ 
+      chest_no: normalizedChestNo,
+      id: { $ne: id }
+    }).lean();
+    
+    if (existing) {
+      throw new Error(`Chest number "${data.chest_no}" is already registered to student "${existing.name}".`);
+    }
+    
+    // Normalize the chest number in the update data
+    data.chest_no = normalizedChestNo;
+  }
+  
+  try {
+    await StudentModel.updateOne({ id }, data);
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error.code === 11000) {
+      throw new Error(`Chest number "${data.chest_no}" is already registered.`);
+    }
+    throw error;
+  }
 }
 
 export async function deleteStudentById(id: string) {
@@ -263,11 +323,44 @@ export async function deleteJuryById(id: string) {
 
 export async function assignProgramToJury(programId: string, juryId: string) {
   await connectDB();
-  await AssignedProgramModel.updateOne(
-    { program_id: programId, jury_id: juryId },
-    { program_id: programId, jury_id: juryId, status: "pending" },
-    { upsert: true },
-  );
+  
+  // Check if program is already approved/published
+  const approvedResult = await ApprovedResultModel.findOne({ program_id: programId }).lean();
+  if (approvedResult) {
+    throw new Error("This program is already published. Cannot assign published programs to juries.");
+  }
+  
+  // Check if assignment already exists
+  const existing = await AssignedProgramModel.findOne({
+    program_id: programId,
+    jury_id: juryId,
+  }).lean();
+  
+  if (existing) {
+    // Assignment already exists - update status to pending if needed
+    if (existing.status !== "pending") {
+      await AssignedProgramModel.updateOne(
+        { program_id: programId, jury_id: juryId },
+        { status: "pending" },
+      );
+    }
+    // Silently succeed if already assigned (idempotent operation)
+    return;
+  }
+  
+  try {
+    await AssignedProgramModel.updateOne(
+      { program_id: programId, jury_id: juryId },
+      { program_id: programId, jury_id: juryId, status: "pending" },
+      { upsert: true },
+    );
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000) for program_id + jury_id unique index
+    if (error.code === 11000 && error.keyPattern?.program_id && error.keyPattern?.jury_id) {
+      throw new Error(`Program is already assigned to this jury.`);
+    }
+    throw error;
+  }
 }
 
 export async function updateAssignmentStatus(

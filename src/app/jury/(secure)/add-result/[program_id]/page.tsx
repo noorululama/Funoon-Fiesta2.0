@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AddResultForm } from "@/components/forms/add-result-form";
 import { getCurrentJury } from "@/lib/auth";
-import { getAssignments, getPrograms, getStudents, getTeams } from "@/lib/data";
+import { getApprovedResults, getAssignments, getPrograms, getStudents, getTeams } from "@/lib/data";
 import { getProgramRegistrations } from "@/lib/team-data";
 import { ensureRegisteredCandidates } from "@/lib/registration-guard";
 import { submitResultToPending } from "@/lib/result-service";
@@ -66,6 +66,13 @@ async function jurySubmitResultAction(formData: FormData) {
     };
   });
 
+  // Validate that all three positions have different candidates
+  const winnerIds = winners.map(w => w.id);
+  const uniqueWinnerIds = new Set(winnerIds);
+  if (uniqueWinnerIds.size !== 3) {
+    throw new Error("1st, 2nd, and 3rd place must have different candidates.");
+  }
+
   const penalties = parsePenaltyPayloads(formData);
 
   await ensureRegisteredCandidates(programId, [
@@ -73,12 +80,24 @@ async function jurySubmitResultAction(formData: FormData) {
     ...penalties.map((penalty) => penalty.id),
   ]);
 
-  await submitResultToPending({
-    programId,
-    juryId: jury.id,
-    winners,
-    penalties,
-  });
+  try {
+    await submitResultToPending({
+      programId,
+      juryId: jury.id,
+      winners,
+      penalties,
+    });
+  } catch (error: any) {
+    // Handle published program error
+    if (error.message?.includes("Program already published") || error.message?.includes("already published")) {
+      throw new Error("Program already published");
+    }
+    // Handle duplicate result submission error
+    if (error.message?.includes("already exists") || error.message?.includes("already been approved")) {
+      throw new Error(error.message);
+    }
+    throw new Error(`Failed to submit result: ${error.message}`);
+  }
 
   redirect("/jury/programs");
 }
@@ -91,18 +110,25 @@ export default async function JuryAddResultPage({
   if (!jury) {
     redirect("/jury/login");
   }
-  const [programs, students, teams, assignments, registrations] = await Promise.all([
+  const [programs, students, teams, assignments, registrations, approvedResults] = await Promise.all([
     getPrograms(),
     getStudents(),
     getTeams(),
     getAssignments(),
     getProgramRegistrations(),
+    getApprovedResults(),
   ]);
 
   const program = programs.find((item) => item.id === programId);
   const assignment = assignments.find(
     (item) => item.program_id === programId && item.jury_id === jury?.id,
   );
+
+  // Check if program is already approved/published
+  const isProgramApproved = approvedResults.some((result) => result.program_id === programId);
+  if (isProgramApproved) {
+    redirect("/jury/programs?error=" + encodeURIComponent("This program is already published"));
+  }
 
   if (!program || !assignment || assignment.status !== "pending") {
     redirect("/jury/programs");
@@ -117,6 +143,7 @@ export default async function JuryAddResultPage({
         teams={teams}
         juries={[jury]}
         registrations={registrations}
+        approvedResults={approvedResults}
         lockProgram
         action={jurySubmitResultAction}
         mode="jury"

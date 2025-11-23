@@ -89,22 +89,30 @@ export async function upsertPortalStudent(input: {
     .lean()
     .exec();
   if (duplicate) {
-    throw new Error("Chest number already registered.");
+    throw new Error(`Chest number "${input.chestNumber}" is already registered to student "${duplicate.name}".`);
   }
 
   const studentId = input.id ?? randomUUID();
-  await StudentModel.updateOne(
-    { id: studentId },
-    {
-      $set: {
-        name: input.name,
-        chest_no: chestNumber,
-        team_id: input.teamId,
+  try {
+    await StudentModel.updateOne(
+      { id: studentId },
+      {
+        $set: {
+          name: input.name,
+          chest_no: chestNumber,
+          team_id: input.teamId,
+        },
+        $setOnInsert: { total_points: 0 },
       },
-      $setOnInsert: { total_points: 0 },
-    },
-    { upsert: true },
-  );
+      { upsert: true },
+    );
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000) for chest_no unique index
+    if (error.code === 11000 && error.keyPattern?.chest_no) {
+      throw new Error(`Chest number "${input.chestNumber}" is already registered.`);
+    }
+    throw error;
+  }
 }
 
 export async function deletePortalStudent(studentId: string) {
@@ -149,8 +157,17 @@ export async function registerCandidate(entry: {
     ...entry,
     timestamp: new Date().toISOString(),
   };
-  await ProgramRegistrationModel.create(record);
-  return record;
+  
+  try {
+    await ProgramRegistrationModel.create(record);
+    return record;
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000) for programId + studentId unique index
+    if (error.code === 11000 && error.keyPattern?.programId && error.keyPattern?.studentId) {
+      throw new Error(`Student "${entry.studentName}" is already registered for program "${entry.programName}".`);
+    }
+    throw error;
+  }
 }
 
 export async function removeProgramRegistration(registrationId: string) {
@@ -306,8 +323,17 @@ export async function createReplacementRequest(request: {
     status: "pending",
     submittedAt: new Date().toISOString(),
   };
-  await ReplacementRequestModel.create(record);
-  return record;
+  
+  try {
+    await ReplacementRequestModel.create(record);
+    return record;
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error (code 11000) for duplicate pending replacement requests
+    if (error.code === 11000 && error.keyPattern?.programId && error.keyPattern?.oldStudentId && error.keyPattern?.status) {
+      throw new Error(`A pending replacement request already exists for "${request.oldStudentName}" in program "${request.programName}".`);
+    }
+    throw error;
+  }
 }
 
 export async function approveReplacementRequest(

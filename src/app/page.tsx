@@ -1,3 +1,16 @@
+// Temporarily showing Coming Soon page - original code preserved below
+import ComingSoon from "@/components/coming-soon";
+
+export default function HomePage() {
+  // Show Coming Soon page
+  return <ComingSoon />;
+}
+
+/* ============================================
+   ORIGINAL ROOT PAGE CODE (PRESERVED)
+   Uncomment below and remove ComingSoon import above to restore
+   ============================================
+
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +61,9 @@ export default async function HomePage() {
             </Link>
             <Link href="/scoreboard">
               <Button variant="secondary">Scoreboards</Button>
+            </Link>
+            <Link href="/participant">
+              <Button variant="secondary">Find Participant</Button>
             </Link>
             <Link href="/team/login">
               <Button variant="outline">Team Portal</Button>
@@ -152,3 +168,5 @@ export default async function HomePage() {
       </main>
   );
 }
+
+============================================ */

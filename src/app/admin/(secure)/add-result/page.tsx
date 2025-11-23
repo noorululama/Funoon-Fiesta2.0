@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AddResultForm } from "@/components/forms/add-result-form";
-import { getJuries, getPrograms, getStudents, getTeams } from "@/lib/data";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { getApprovedResults, getJuries, getPrograms, getStudents, getTeams } from "@/lib/data";
 import { getProgramRegistrations } from "@/lib/team-data";
 import { ensureRegisteredCandidates } from "@/lib/registration-guard";
 import { submitResultToPending } from "@/lib/result-service";
@@ -60,6 +61,13 @@ async function submitResultAction(formData: FormData) {
     };
   });
 
+  // Validate that all three positions have different candidates
+  const winnerIds = winners.map(w => w.id);
+  const uniqueWinnerIds = new Set(winnerIds);
+  if (uniqueWinnerIds.size !== 3) {
+    throw new Error("1st, 2nd, and 3rd place must have different candidates.");
+  }
+
   const penalties = parsePenaltyPayloads(formData);
 
   await ensureRegisteredCandidates(programId, [
@@ -67,34 +75,66 @@ async function submitResultAction(formData: FormData) {
     ...penalties.map((penalty) => penalty.id),
   ]);
 
-  await submitResultToPending({
-    programId,
-    juryId,
-    winners,
-    penalties,
-  });
+  try {
+    await submitResultToPending({
+      programId,
+      juryId,
+      winners,
+      penalties,
+    });
+  } catch (error: any) {
+    // Handle published program error
+    if (error.message?.includes("Program already published") || error.message?.includes("already published")) {
+      throw new Error("Program already published");
+    }
+    // Handle duplicate result submission error
+    if (error.message?.includes("already exists") || error.message?.includes("already been approved")) {
+      throw new Error(error.message);
+    }
+    throw new Error(`Failed to submit result: ${error.message}`);
+  }
 
   redirect("/admin/pending-results");
 }
 
 export default async function AddResultPage() {
-  const [programs, students, teams, juries, registrations] = await Promise.all([
+  const [programs, students, teams, juries, registrations, approvedResults] = await Promise.all([
     getPrograms(),
     getStudents(),
     getTeams(),
     getJuries(),
     getProgramRegistrations(),
+    getApprovedResults(),
   ]);
+
+  // Filter out programs that are already approved/published
+  const approvedProgramIds = new Set(approvedResults.map((result) => result.program_id));
+  const availablePrograms = programs.filter((program) => !approvedProgramIds.has(program.id));
+
+  if (availablePrograms.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-white">Add result (3 steps)</h1>
+        <Card className="border-amber-500/40 bg-amber-500/10 p-6">
+          <CardTitle>No Programs Available</CardTitle>
+          <CardDescription className="mt-2">
+            All programs have been published. No results can be added at this time.
+          </CardDescription>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-white">Add result (3 steps)</h1>
       <AddResultForm
-        programs={programs}
+        programs={availablePrograms}
         students={students}
         teams={teams}
         juries={juries}
         registrations={registrations}
+        approvedResults={approvedResults}
         action={submitResultAction}
       />
     </div>
