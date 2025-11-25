@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAssignmentUpdates } from "@/hooks/use-realtime";
+import { useDebounce } from "@/hooks/use-debounce";
 import {
   CheckCircle2,
   Clock,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,7 @@ const statusConfig = {
   },
 };
 
-export function AssignmentManager({
+export const AssignmentManager = React.memo(function AssignmentManager({
   assignments,
   programs,
   juries,
@@ -64,6 +65,7 @@ export function AssignmentManager({
 }: AssignmentManagerProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("by-jury");
   const [expandedJuries, setExpandedJuries] = useState<Set<string>>(new Set());
@@ -117,12 +119,12 @@ export function AssignmentManager({
       const program = programMap.get(assignment.program_id);
       const jury = juryMap.get(assignment.jury_id);
       const matchesSearch =
-        program?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        jury?.name.toLowerCase().includes(searchQuery.toLowerCase());
+        program?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        jury?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || assignment.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [assignments, searchQuery, statusFilter, programMap, juryMap]);
+  }, [assignments, debouncedSearchQuery, statusFilter, programMap, juryMap]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -133,7 +135,7 @@ export function AssignmentManager({
     return { total, pending, submitted, completed };
   }, [assignments]);
 
-  const toggleJuryExpansion = (juryId: string) => {
+  const toggleJuryExpansion = useCallback((juryId: string) => {
     setExpandedJuries((prev) => {
       const next = new Set(prev);
       if (next.has(juryId)) {
@@ -143,7 +145,7 @@ export function AssignmentManager({
       }
       return next;
     });
-  };
+  }, []);
 
   const expandAll = () => {
     setExpandedJuries(new Set(Array.from(assignmentsByJury.keys())));
@@ -217,16 +219,19 @@ export function AssignmentManager({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select
+            <SearchSelect
+              name="status_filter"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
               className="w-full sm:w-auto"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="submitted">Submitted</option>
-              <option value="completed">Completed</option>
-            </Select>
+              options={[
+                { value: "all", label: "All Status" },
+                { value: "pending", label: "Pending" },
+                { value: "submitted", label: "Submitted" },
+                { value: "completed", label: "Completed" },
+              ]}
+              placeholder="Filter by status"
+            />
             <div className="flex gap-2">
               <Button
                 variant={viewMode === "by-jury" ? "default" : "secondary"}
@@ -267,8 +272,8 @@ export function AssignmentManager({
             const filtered = juryAssignments.filter((assignment) => {
               const program = programMap.get(assignment.program_id);
               const matchesSearch =
-                program?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                jury?.name.toLowerCase().includes(searchQuery.toLowerCase());
+                program?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                jury?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
               const matchesStatus = statusFilter === "all" || assignment.status === statusFilter;
               return matchesSearch && matchesStatus;
             });
@@ -565,5 +570,5 @@ export function AssignmentManager({
       </Modal>
     </div>
   );
-}
+});
 

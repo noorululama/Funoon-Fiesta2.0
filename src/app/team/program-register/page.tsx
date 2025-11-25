@@ -14,7 +14,10 @@ import {
 } from "@/lib/team-data";
 
 function redirectWithMessage(message: string, type: "error" | "success" = "error") {
-  const params = new URLSearchParams({ [type]: message });
+  const params = new URLSearchParams({ 
+    message: encodeURIComponent(message),
+    toastType: type 
+  });
   redirect(`/team/program-register?${params.toString()}`);
 }
 

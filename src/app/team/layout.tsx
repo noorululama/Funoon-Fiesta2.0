@@ -3,6 +3,7 @@ import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logoutTeam, getCurrentTeam } from "@/lib/auth";
+import { TeamNav } from "@/components/team-nav";
 
 async function logoutAction() {
   "use server";
@@ -15,21 +16,29 @@ export default async function TeamLayout({ children }: { children: ReactNode }) 
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-10 md:px-8">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:gap-6 lg:gap-8 px-4 sm:px-5 md:px-8 py-6 sm:py-8 lg:py-10">
         <header
-          className="rounded-3xl border border-white/10 bg-white/5 px-6 py-4"
+          className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/5 px-4 sm:px-6 py-3 sm:py-4"
           style={{ borderColor: team?.themeColor ?? "#0ea5e9" }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Badge tone="cyan">Team Portal</Badge>
-              <h1 className="text-2xl font-semibold">
-                {team ? `${team.teamName} · ${team.leaderName}` : "Team Portal"}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <Badge tone="cyan" className="text-xs sm:text-sm mb-1 sm:mb-0">Team Portal</Badge>
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold truncate">
+                {team ? (
+                  <>
+                    <span className="block sm:inline">{team.teamName}</span>
+                    <span className="hidden sm:inline"> · </span>
+                    <span className="block sm:inline text-white/70">{team.leaderName}</span>
+                  </>
+                ) : (
+                  "Team Portal"
+                )}
               </h1>
             </div>
             {team && (
-              <form action={logoutAction}>
-                <Button type="submit" variant="ghost">
+              <form action={logoutAction} className="shrink-0">
+                <Button type="submit" variant="ghost" size="sm" className="w-full sm:w-auto">
                   Logout
                 </Button>
               </form>
@@ -37,22 +46,11 @@ export default async function TeamLayout({ children }: { children: ReactNode }) 
           </div>
         </header>
         {team && (
-          <nav className="flex flex-wrap gap-3 rounded-3xl border border-white/10 bg-white/5 p-4">
-            <a href="/team/dashboard" className="rounded-2xl px-4 py-2 text-sm font-semibold hover:bg-white/10">
-              Dashboard
-            </a>
-            <a href="/team/register-students" className="rounded-2xl px-4 py-2 text-sm font-semibold hover:bg-white/10">
-              Register Students
-            </a>
-            <a href="/team/program-register" className="rounded-2xl px-4 py-2 text-sm font-semibold hover:bg-white/10">
-              Program Registration
-            </a>
-            <a href="/team/replacement-request" className="rounded-2xl px-4 py-2 text-sm font-semibold hover:bg-white/10">
-              Replacement Request
-            </a>
-          </nav>
+          <div className="flex items-center justify-between gap-3">
+            <TeamNav />
+          </div>
         )}
-        <section>{children}</section>
+        <section className="min-w-0">{children}</section>
       </div>
     </div>
   );

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { CheckCircle2, Eye, Pencil, Search, Trash2, Calendar, User, Award } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
+import { useDebounce } from "@/hooks/use-debounce";
 import type { Program, ResultRecord, Jury, Student, Team } from "@/lib/types";
 
 interface ResultManagerProps {
@@ -25,12 +26,12 @@ interface ResultManagerProps {
 type SortOption = "latest" | "program" | "jury" | "score";
 
 const pageSizeOptions = [
-  { label: "8 / page", value: 8 },
-  { label: "15 / page", value: 15 },
-  { label: "25 / page", value: 25 },
+  { label: "8 / page", value: "8" },
+  { label: "15 / page", value: "15" },
+  { label: "25 / page", value: "25" },
 ];
 
-export function ResultManager({
+export const ResultManager = React.memo(function ResultManager({
   results,
   programs,
   juries,
@@ -56,22 +57,23 @@ export function ResultManager({
   );
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [programFilter, setProgramFilter] = useState("");
   const [juryFilter, setJuryFilter] = useState("");
   const [sort, setSort] = useState<SortOption>("latest");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(pageSizeOptions[0].value);
+  const [pageSize, setPageSize] = useState<number>(Number(pageSizeOptions[0].value));
   const [viewResult, setViewResult] = useState<ResultRecord | null>(null);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, programFilter, juryFilter, sort]);
+  }, [debouncedSearchQuery, programFilter, juryFilter, sort]);
 
   const filteredResults = useMemo(() => {
     return results.filter((result) => {
       const program = programMap.get(result.program_id);
       const jury = juryMap.get(result.jury_id);
-      const query = searchQuery.trim().toLowerCase();
+      const query = debouncedSearchQuery.trim().toLowerCase();
       
       const matchesSearch =
         program?.name.toLowerCase().includes(query) ||
@@ -82,7 +84,7 @@ export function ResultManager({
       
       return matchesSearch && matchesProgram && matchesJury;
     });
-  }, [results, searchQuery, programFilter, juryFilter, programMap, juryMap]);
+  }, [results, debouncedSearchQuery, programFilter, juryFilter, programMap, juryMap]);
 
   const sortedResults = useMemo(() => {
     const list = [...filteredResults];
@@ -170,20 +172,20 @@ export function ResultManager({
             onChange={(event) => setSearchQuery(event.target.value)}
           />
         </div>
-        <Select value={programFilter} onChange={(event) => setProgramFilter(event.target.value)}>
-          {programOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Select value={juryFilter} onChange={(event) => setJuryFilter(event.target.value)}>
-          {juryOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <SearchSelect
+          name="program_filter"
+          options={programOptions}
+          value={programFilter}
+          onValueChange={setProgramFilter}
+          placeholder="Filter by program"
+        />
+        <SearchSelect
+          name="jury_filter"
+          options={juryOptions}
+          value={juryFilter}
+          onValueChange={setJuryFilter}
+          placeholder="Filter by jury"
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -210,20 +212,17 @@ export function ResultManager({
           ))}
         </div>
         <div className="ml-auto flex items-center gap-4 text-sm text-white/60">
-          <Select
+          <SearchSelect
+            name="page_size"
             className="w-32"
+            options={pageSizeOptions}
             value={String(pageSize)}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
+            onValueChange={(value) => {
+              setPageSize(Number(value));
               setPage(1);
             }}
-          >
-            {pageSizeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
+            placeholder="Page size"
+          />
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
           {sortedResults.length} results
         </div>
@@ -487,5 +486,5 @@ export function ResultManager({
       )}
     </div>
   );
-}
+});
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import { useFormStatus } from "react-dom";
 import { Search, Users, UserCheck, FileText, Trash2, Pencil, Eye, TrendingUp, LayoutGrid, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Modal } from "@/components/ui/modal";
+import { useDebounce } from "@/hooks/use-debounce";
 import type { PortalTeam } from "@/lib/types";
 
 interface PortalStudent {
@@ -53,7 +54,7 @@ function DeleteButton({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TeamPortalManager({
+export const TeamPortalManager = React.memo(function TeamPortalManager({
   teams,
   students,
   registrations,
@@ -61,6 +62,7 @@ export function TeamPortalManager({
   deleteAction,
 }: TeamPortalManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [activeView, setActiveView] = useState<"teams" | "students" | "registrations" | null>(null);
   const [editingTeam, setEditingTeam] = useState<PortalTeam | null>(null);
   const [viewingTeam, setViewingTeam] = useState<PortalTeam | null>(null);
@@ -72,20 +74,20 @@ export function TeamPortalManager({
   const filteredTeams = useMemo(() => {
     if (!activeView || activeView !== "teams") return [];
     return teams.filter((team) =>
-      team.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      team.leaderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      team.id.toLowerCase().includes(searchQuery.toLowerCase())
+      team.teamName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      team.leaderName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      team.id.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
-  }, [teams, searchQuery, activeView]);
+  }, [teams, debouncedSearchQuery, activeView]);
 
   const filteredStudents = useMemo(() => {
     if (!activeView || activeView !== "students") return [];
     return students.filter((student) =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.chestNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.teamId.toLowerCase().includes(searchQuery.toLowerCase())
+      student.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      student.chestNumber.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      student.teamId.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
-  }, [students, searchQuery, activeView]);
+  }, [students, debouncedSearchQuery, activeView]);
 
   const registrationStats = useMemo(() => {
     const uniquePrograms = new Set(registrations.map((r) => r.programName));
@@ -118,11 +120,11 @@ export function TeamPortalManager({
   const filteredRegistrations = useMemo(() => {
     if (!activeView || activeView !== "registrations") return [];
     let filtered = registrations.filter((reg) =>
-      reg.programName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.studentChest.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.teamId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (reg.teamName && reg.teamName.toLowerCase().includes(searchQuery.toLowerCase()))
+      reg.programName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      reg.studentName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      reg.studentChest.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      reg.teamId.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      (reg.teamName && reg.teamName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))
     );
     
     if (registrationTeamFilter) {
@@ -130,7 +132,7 @@ export function TeamPortalManager({
     }
     
     return filtered;
-  }, [registrations, searchQuery, activeView, registrationTeamFilter]);
+  }, [registrations, debouncedSearchQuery, activeView, registrationTeamFilter]);
 
   const groupedRegistrations = useMemo(() => {
     if (registrationGroupBy === "program") {
@@ -460,28 +462,28 @@ export function TeamPortalManager({
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Select
+              <SearchSelect
+                name="registration_team_filter"
                 value={registrationTeamFilter}
-                onChange={(e) => setRegistrationTeamFilter(e.target.value)}
+                onValueChange={setRegistrationTeamFilter}
                 className="w-full"
-              >
-                {teamOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-              <Select
+                options={teamOptions}
+                placeholder="Filter by team"
+              />
+              <SearchSelect
+                name="registration_group_by"
                 value={registrationGroupBy}
-                onChange={(e) =>
-                  setRegistrationGroupBy(e.target.value as "all" | "program" | "team")
+                onValueChange={(value) =>
+                  setRegistrationGroupBy(value as "all" | "program" | "team")
                 }
                 className="w-full"
-              >
-                <option value="all">View All</option>
-                <option value="program">Group by Program</option>
-                <option value="team">Group by Team</option>
-              </Select>
+                options={[
+                  { value: "all", label: "View All" },
+                  { value: "program", label: "Group by Program" },
+                  { value: "team", label: "Group by Team" },
+                ]}
+                placeholder="Group by"
+              />
             </div>
           </div>
 
@@ -748,5 +750,5 @@ export function TeamPortalManager({
       </Modal>
     </>
   );
-}
+});
 

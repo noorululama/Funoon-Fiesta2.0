@@ -41,24 +41,22 @@ export default function AdminSecureLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-950/95 text-white">
-      <div className="mx-auto max-w-full px-5 py-10 md:px-8">
-        <Sidenavbar items={adminNav} heading="Admin Control">
-          <div className="flex flex-col gap-8">
-            <header className="glass-panel flex flex-wrap items-center justify-between gap-4 px-6 py-4">
-              <div>
-                <p className="text-xs uppercase text-white/60">Admin Deck</p>
-                <h1 className="text-2xl font-semibold">Fest Command Center</h1>
-              </div>
-              <form action={logoutAction}>
-                <Button type="submit" variant="ghost">
-                  Sign out
-                </Button>
-              </form>
-            </header>
-            <section className="space-y-10">{children}</section>
-          </div>
-        </Sidenavbar>
-      </div>
+      <Sidenavbar items={adminNav} heading="Admin Control">
+        <div className="flex min-h-screen flex-col gap-8 px-5 py-6 md:px-8 md:py-10">
+          <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 shadow-lg">
+            <div>
+              <p className="text-xs uppercase text-white/60">Admin Deck</p>
+              <h1 className="text-2xl font-semibold">Fest Command Center</h1>
+            </div>
+            <form action={logoutAction}>
+              <Button type="submit" variant="ghost" className="hover:bg-white/10">
+                Sign out
+              </Button>
+            </form>
+          </header>
+          <section className="space-y-10">{children}</section>
+        </div>
+      </Sidenavbar>
     </div>
   );
 }

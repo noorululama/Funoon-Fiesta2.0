@@ -1,7 +1,9 @@
+import { twMerge } from "tailwind-merge";
+
 export function cn(
   ...classes: Array<string | undefined | null | false | Record<string, boolean>>
 ) {
-  return classes
+  const merged = classes
     .flatMap((cls) => {
       if (!cls) return [];
       if (typeof cls === "string") return [cls];
@@ -11,6 +13,8 @@ export function cn(
     })
     .join(" ")
     .trim();
+  
+  return twMerge(merged);
 }
 
 export function formatNumber(value: number) {

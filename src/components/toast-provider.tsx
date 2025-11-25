@@ -10,8 +10,18 @@ function ToastListener() {
 
   useEffect(() => {
     // Check for toast messages in URL params
-    const message = searchParams.get("message");
-    const type = searchParams.get("type") || "error";
+    let message = searchParams.get("message");
+    let type = searchParams.get("type") || searchParams.get("toastType") || "error";
+    
+    // Also check for error/success params (legacy support)
+    if (!message) {
+      message = searchParams.get("error") || searchParams.get("success") || null;
+      if (searchParams.get("success")) {
+        type = "success";
+      } else if (searchParams.get("error")) {
+        type = "error";
+      }
+    }
 
     if (message) {
       const decodedMessage = decodeURIComponent(message);
@@ -63,6 +73,9 @@ function ToastListener() {
       const url = new URL(window.location.href);
       url.searchParams.delete("message");
       url.searchParams.delete("type");
+      url.searchParams.delete("toastType");
+      url.searchParams.delete("error");
+      url.searchParams.delete("success");
       window.history.replaceState({}, "", url);
     }
   }, [searchParams]);

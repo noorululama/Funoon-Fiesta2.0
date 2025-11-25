@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   assignProgramToJury,
   createProgram,
@@ -361,21 +361,37 @@ export default async function ProgramsPage() {
           className="mt-6 grid gap-4 md:grid-cols-2"
         >
           <Input name="name" placeholder="Program name" required />
-          <Select name="section" defaultValue="single" required>
-            <option value="single">Single</option>
-            <option value="group">Group</option>
-            <option value="general">General</option>
-          </Select>
-          <Select name="category" defaultValue="A">
-            <option value="A">Category A</option>
-            <option value="B">Category B</option>
-            <option value="C">Category C</option>
-            <option value="none">None</option>
-          </Select>
-          <Select name="stage" defaultValue="true">
-            <option value="true">On Stage</option>
-            <option value="false">Off Stage</option>
-          </Select>
+          <SearchSelect
+            name="section"
+            defaultValue="single"
+            required
+            options={[
+              { value: "single", label: "Single" },
+              { value: "group", label: "Group" },
+              { value: "general", label: "General" },
+            ]}
+            placeholder="Select section"
+          />
+          <SearchSelect
+            name="category"
+            defaultValue="A"
+            options={[
+              { value: "A", label: "Category A" },
+              { value: "B", label: "Category B" },
+              { value: "C", label: "Category C" },
+              { value: "none", label: "None" },
+            ]}
+            placeholder="Select category"
+          />
+          <SearchSelect
+            name="stage"
+            defaultValue="true"
+            options={[
+              { value: "true", label: "On Stage" },
+              { value: "false", label: "Off Stage" },
+            ]}
+            placeholder="Select stage"
+          />
           <Input
             name="candidateLimit"
             type="number"

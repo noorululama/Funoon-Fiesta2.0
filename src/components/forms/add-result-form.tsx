@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { SearchSelect } from "@/components/ui/search-select";
-import { Select } from "@/components/ui/select";
 import type {
   GradeType,
   Jury,
@@ -380,18 +379,14 @@ export function AddResultForm({
                 />
               </div>
               {isSingle ? (
-                <Select
+                <SearchSelect
                   className="mt-3"
                   name={`grade_${position}`}
                   defaultValue={initial?.[slot]?.grade ?? "A"}
                   disabled={!hasEligibleCandidates}
-                >
-                  {gradeOptions.map((grade) => (
-                    <option key={grade.value} value={grade.value}>
-                      {grade.label}
-                    </option>
-                  ))}
-                </Select>
+                  options={gradeOptions}
+                  placeholder="Select grade"
+                />
               ) : (
                 <input type="hidden" name={`grade_${position}`} value="none" />
               )}
@@ -500,19 +495,15 @@ export function AddResultForm({
         <CardDescription className="mt-2">
           Once you submit, the record lands in Pending Results for approval.
         </CardDescription>
-        <Select
+        <SearchSelect
           className="mt-6"
           name="jury_id"
           required
           defaultValue={juries[0]?.id}
           disabled={lockProgram}
-        >
-          {juries.map((jury) => (
-            <option key={jury.id} value={jury.id}>
-              {jury.name}
-            </option>
-          ))}
-        </Select>
+          options={juries.map((jury) => ({ value: jury.id, label: jury.name }))}
+          placeholder="Select jury"
+        />
           <Button type="submit" className="mt-4" disabled={!hasEligibleCandidates}>
           {submitLabel}
         </Button>

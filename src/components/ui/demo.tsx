@@ -73,7 +73,7 @@ export default function Sidenavbar({
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex min-h-screen flex-col gap-4">
       {/* Mobile navbar + drawer menu */}
       <div className="flex flex-col gap-4 md:hidden">
         <header className="flex items-center justify-between rounded-3xl border border-white/10 bg-white/5 px-4 py-3">
@@ -126,16 +126,16 @@ export default function Sidenavbar({
       </div>
 
       {/* Desktop sidebar layout */}
-      <div className="hidden h-full gap-6 md:flex">
+      <div className="hidden min-h-screen gap-6 md:flex relative">
         <aside
           className={cn(
-            "flex flex-col rounded-3xl border border-white/10 bg-white/5 transition-all duration-300 ease-in-out",
+            "fixed left-4 top-10 bottom-10 z-50 flex flex-col rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-300 ease-in-out shadow-2xl shadow-black/20",
             isOpen ? "w-64" : "w-20",
           )}
         >
           <div
             className={cn(
-              "flex h-16 items-center border-b border-white/10",
+              "flex h-16 items-center border-b border-white/10 ",
               isOpen ? "justify-between px-4" : "justify-center px-3",
             )}
           >
@@ -147,11 +147,11 @@ export default function Sidenavbar({
             >
               {heading}
             </span>
-            <Button
+            <Button 
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen((prev) => !prev)}
-              className="shrink-0 border border-white/10 bg-white/5 hover:bg-white/10"
+              className="shrink-0 border border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl"
             >
               <Menu className="h-6 w-6" />
             </Button>
@@ -160,8 +160,13 @@ export default function Sidenavbar({
             <nav className="p-4">
               {items.map((item) => {
                 const IconComponent = item.icon ? ICONS[item.icon] : undefined;
+                const isActive = pathname?.startsWith(item.href ?? "");
+                const hasActiveChild = item.children?.some((child) => 
+                  pathname?.startsWith(child.href)
+                ) ?? false;
+                
                 return item.children && item.children.length > 0 ? (
-                  <Collapsible key={item.label} className="space-y-1">
+                  <Collapsible key={item.label} className="space-y-1" defaultOpen={hasActiveChild}>
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
@@ -231,7 +236,10 @@ export default function Sidenavbar({
             </nav>
           </ScrollArea>
         </aside>
-        <main className="flex-1">{children}</main>
+        <main className={cn(
+          "flex-1 w-full transition-all duration-300 ease-in-out",
+          isOpen ? "ml-[18.5rem]" : "ml-[7.5rem]"
+        )}>{children}</main>
       </div>
     </div>
   );

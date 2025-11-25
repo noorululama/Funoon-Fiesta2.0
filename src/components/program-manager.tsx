@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, LayoutList, Search, Trash2, Eye, Pencil } from "lucide-react";
 import { showSuccess, showError } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Modal } from "@/components/ui/modal";
+import { useDebounce } from "@/hooks/use-debounce";
 import type { Jury, Program } from "@/lib/types";
 
 interface ProgramManagerProps {
@@ -45,9 +46,9 @@ const stageOptions = [
 ];
 
 const pageSizeOptions = [
-  { label: "6 / page", value: 6 },
-  { label: "10 / page", value: 10 },
-  { label: "20 / page", value: 20 },
+  { label: "6 / page", value: "6" },
+  { label: "10 / page", value: "10" },
+  { label: "20 / page", value: "20" },
 ];
 
 // Submit button components that use form status
@@ -88,7 +89,7 @@ function BulkDeleteSubmitButton({ count }: { count: number }) {
   );
 }
 
-export function ProgramManager({
+export const ProgramManager = React.memo(function ProgramManager({
   programs,
   updateAction,
   deleteAction,
@@ -98,6 +99,7 @@ export function ProgramManager({
   candidateCounts = {},
 }: ProgramManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [sectionFilter, setSectionFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [stageFilter, setStageFilter] = useState("");
@@ -106,7 +108,7 @@ export function ProgramManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewProgram, setViewProgram] = useState<Program | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(pageSizeOptions[0].value);
+  const [pageSize, setPageSize] = useState<number>(Number(pageSizeOptions[0].value));
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const juryOptions = useMemo(
@@ -117,7 +119,7 @@ export function ProgramManager({
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, sectionFilter, categoryFilter, stageFilter, sort]);
+  }, [debouncedSearchQuery, sectionFilter, categoryFilter, stageFilter, sort]);
 
   useEffect(() => {
     setSelectedJuryId(juryOptions[0]?.value ?? "");
@@ -132,13 +134,13 @@ export function ProgramManager({
 
   const filteredPrograms = useMemo(() => {
     return programs.filter((program) => {
-      const matchesSearch = program.name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      const matchesSearch = program.name.toLowerCase().includes(debouncedSearchQuery.trim().toLowerCase());
       const matchesSection = sectionFilter ? program.section === sectionFilter : true;
       const matchesCategory = categoryFilter ? program.category === categoryFilter : true;
       const matchesStage = stageFilter ? String(program.stage) === stageFilter : true;
       return matchesSearch && matchesSection && matchesCategory && matchesStage;
     });
-  }, [programs, searchQuery, sectionFilter, categoryFilter, stageFilter]);
+  }, [programs, debouncedSearchQuery, sectionFilter, categoryFilter, stageFilter]);
 
   const sortedPrograms = useMemo(() => {
     const list = [...filteredPrograms];
@@ -160,7 +162,7 @@ export function ProgramManager({
     });
   }, [sortedPrograms]);
 
-  const toggleSelectOne = (id: string) => {
+  const toggleSelectOne = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -170,7 +172,7 @@ export function ProgramManager({
       }
       return next;
     });
-  };
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(sortedPrograms.length / pageSize)) || 1;
 
@@ -188,13 +190,17 @@ export function ProgramManager({
   const selectedIdsValue = selectedIds.join(",");
   const hasSelection = selectedIds.length > 0;
 
-  const toggleSelectAll = (checked: boolean) => {
+  const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
       setSelected(new Set(sortedPrograms.map((program) => program.id)));
     } else {
       setSelected(new Set());
     }
-  };
+  }, [sortedPrograms]);
+
+  const handleSortChange = useCallback((value: SortOption) => {
+    setSort(value);
+  }, []);
 
   const allSelected =
     sortedPrograms.length > 0 && sortedPrograms.every((program) => selected.has(program.id));
@@ -244,27 +250,27 @@ export function ProgramManager({
             onChange={(event) => setSearchQuery(event.target.value)}
           />
         </div>
-        <Select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)}>
-          {sectionOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-          {categoryOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-        <Select value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}>
-          {stageOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <SearchSelect
+          name="section_filter"
+          options={sectionOptions}
+          value={sectionFilter}
+          onValueChange={setSectionFilter}
+          placeholder="Filter by section"
+        />
+        <SearchSelect
+          name="category_filter"
+          options={categoryOptions}
+          value={categoryFilter}
+          onValueChange={setCategoryFilter}
+          placeholder="Filter by category"
+        />
+        <SearchSelect
+          name="stage_filter"
+          options={stageOptions}
+          value={stageFilter}
+          onValueChange={setStageFilter}
+          placeholder="Filter by stage"
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -278,7 +284,7 @@ export function ProgramManager({
             <button
               key={option.value}
               type="button"
-              onClick={() => setSort(option.value as SortOption)}
+              onClick={() => handleSortChange(option.value as SortOption)}
               className={`rounded-full px-4 py-1 text-xs font-semibold transition ${
                 sort === option.value
                   ? "bg-emerald-500/20 text-emerald-300"
@@ -290,20 +296,17 @@ export function ProgramManager({
           ))}
         </div>
         <div className="ml-auto flex items-center gap-4 text-sm text-white/60">
-          <Select
+          <SearchSelect
+            name="page_size"
             className="w-32"
+            options={pageSizeOptions}
             value={String(pageSize)}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
+            onValueChange={(value) => {
+              setPageSize(Number(value));
               setPage(1);
             }}
-          >
-            {pageSizeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
+            placeholder="Page size"
+          />
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
           {sortedPrograms.length} programs
         </div>
@@ -316,7 +319,6 @@ export function ProgramManager({
               type="checkbox"
               checked={allSelected}
               onChange={(event) => toggleSelectAll(event.target.checked)}
-              className="h-4 w-4 rounded border-white/30 bg-transparent text-emerald-400 focus:ring-fuchsia-400/40"
             />
             Select all
           </div>
@@ -342,7 +344,6 @@ export function ProgramManager({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelectOne(program.id)}
-                    className="h-4 w-4 rounded border-white/30 bg-transparent text-emerald-400 focus:ring-fuchsia-400/40"
                   />
                   <div>
                     <p className="text-sm text-white/40">#{program.id.slice(0, 8)}</p>
@@ -372,7 +373,7 @@ export function ProgramManager({
                 <div className="text-sm text-white/70 w-full xl:w-auto">
                   Last updated · <span className="text-white/50">Auto</span>
                 </div>
-                <div className="flex flex-wrap gap-2 w-full xl:ml-auto xl:w-auto xl:justify-end">
+                <div className="flex flex-wrap gap-2 w-full xl:ml-auto xl:w-auto xl:justify-end" >
                   <Button
                     type="button"
                     variant="secondary"
@@ -406,21 +407,36 @@ export function ProgramManager({
                 >
                   <input type="hidden" name="id" value={program.id} />
                   <Input name="name" defaultValue={program.name} placeholder="Program name" />
-                  <Select name="section" defaultValue={program.section}>
-                    <option value="single">Single</option>
-                    <option value="group">Group</option>
-                    <option value="general">General</option>
-                  </Select>
-                  <Select name="category" defaultValue={program.category}>
-                    <option value="A">Category A</option>
-                    <option value="B">Category B</option>
-                    <option value="C">Category C</option>
-                    <option value="none">None</option>
-                  </Select>
-                  <Select name="stage" defaultValue={program.stage ? "true" : "false"}>
-                    <option value="true">On Stage</option>
-                    <option value="false">Off Stage</option>
-                  </Select>
+                  <SearchSelect
+                    name="section"
+                    defaultValue={program.section}
+                    options={[
+                      { value: "single", label: "Single" },
+                      { value: "group", label: "Group" },
+                      { value: "general", label: "General" },
+                    ]}
+                    placeholder="Select section"
+                  />
+                  <SearchSelect
+                    name="category"
+                    defaultValue={program.category}
+                    options={[
+                      { value: "A", label: "Category A" },
+                      { value: "B", label: "Category B" },
+                      { value: "C", label: "Category C" },
+                      { value: "none", label: "None" },
+                    ]}
+                    placeholder="Select category"
+                  />
+                  <SearchSelect
+                    name="stage"
+                    defaultValue={program.stage ? "true" : "false"}
+                    options={[
+                      { value: "true", label: "On Stage" },
+                      { value: "false", label: "Off Stage" },
+                    ]}
+                    placeholder="Select stage"
+                  />
                   <Input
                     name="candidateLimit"
                     type="number"
@@ -534,18 +550,14 @@ export function ProgramManager({
         ) : (
           <form action={bulkAssignAction} className="space-y-4">
             <input type="hidden" name="program_ids" value={selectedIdsValue} />
-            <Select
+            <SearchSelect
               name="jury_id"
+              options={juryOptions}
               value={selectedJuryId}
-              onChange={(event) => setSelectedJuryId(event.target.value)}
+              onValueChange={setSelectedJuryId}
               required
-            >
-              {juryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              placeholder="Select jury"
+            />
             <BulkAssignSubmitButton count={selected.size} />
           </form>
         )}
@@ -572,6 +584,6 @@ export function ProgramManager({
       </Modal>
     </div>
   );
-}
+});
 
 

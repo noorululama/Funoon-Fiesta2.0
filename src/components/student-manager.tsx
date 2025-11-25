@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { CheckCircle2, Eye, Pencil, Search, Trash2, Download, FileText, FileSpreadsheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
+import { useDebounce } from "@/hooks/use-debounce";
 import type { Student, Team, Program, ProgramRegistration } from "@/lib/types";
 
 interface StudentManagerProps {
@@ -23,12 +23,12 @@ interface StudentManagerProps {
 type SortOption = "latest" | "az" | "chest";
 
 const pageSizeOptions = [
-  { label: "8 / page", value: 8 },
-  { label: "15 / page", value: 15 },
-  { label: "25 / page", value: 25 },
+  { label: "8 / page", value: "8" },
+  { label: "15 / page", value: "15" },
+  { label: "25 / page", value: "25" },
 ];
 
-export function StudentManager({
+export const StudentManager = React.memo(function StudentManager({
   students,
   teams,
   programs = [],
@@ -68,6 +68,7 @@ export function StudentManager({
   }, [registrations]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [teamFilter, setTeamFilter] = useState("");
   const [programFilter, setProgramFilter] = useState("");
   const [sort, setSort] = useState<SortOption>("latest");
@@ -75,17 +76,17 @@ export function StudentManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewStudentId, setViewStudentId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(pageSizeOptions[0].value);
+  const [pageSize, setPageSize] = useState<number>(Number(pageSizeOptions[0].value));
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, teamFilter, programFilter, sort]);
+  }, [debouncedSearchQuery, teamFilter, programFilter, sort]);
 
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
-      const query = searchQuery.trim().toLowerCase();
+      const query = debouncedSearchQuery.trim().toLowerCase();
       const matchesSearch =
         student.name.toLowerCase().includes(query) || student.chest_no.toLowerCase().includes(query);
       const matchesTeam = teamFilter ? student.team_id === teamFilter : true;
@@ -94,7 +95,7 @@ export function StudentManager({
         : true;
       return matchesSearch && matchesTeam && matchesProgram;
     });
-  }, [students, searchQuery, teamFilter, programFilter, studentRegistrationsMap]);
+  }, [students, debouncedSearchQuery, teamFilter, programFilter, studentRegistrationsMap]);
 
   const sortedStudents = useMemo(() => {
     const list = [...filteredStudents];
@@ -132,15 +133,15 @@ export function StudentManager({
   const selectedIdsValue = Array.from(selected).join(",");
   const allSelected = sortedStudents.length > 0 && sortedStudents.every((student) => selected.has(student.id));
 
-  const toggleSelectAll = (checked: boolean) => {
+  const toggleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
       setSelected(new Set(sortedStudents.map((student) => student.id)));
     } else {
       setSelected(new Set());
     }
-  };
+  }, [sortedStudents]);
 
-  const toggleSelectOne = (id: string) => {
+  const toggleSelectOne = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -150,7 +151,7 @@ export function StudentManager({
       }
       return next;
     });
-  };
+  }, []);
 
   const viewStudent = viewStudentId ? students.find((student) => student.id === viewStudentId) : null;
 
@@ -334,13 +335,13 @@ export function StudentManager({
             onChange={(event) => setSearchQuery(event.target.value)}
           />
         </div>
-        <Select value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
-          {teamOptions.map((option) => (
-            <option key={option.value || "all"} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <SearchSelect
+          name="team_filter"
+          options={teamOptions}
+          value={teamFilter}
+          onValueChange={setTeamFilter}
+          placeholder="Filter by team"
+        />
         {programOptions.length > 1 && (
           <SearchSelect
             name="program_filter"
@@ -350,13 +351,13 @@ export function StudentManager({
             placeholder="Filter by program"
           />
         )}
-        <Select value={String(pageSize)} onChange={(event) => setPageSize(Number(event.target.value))}>
-          {pageSizeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <SearchSelect
+          name="page_size"
+          options={pageSizeOptions}
+          value={String(pageSize)}
+          onValueChange={(value) => setPageSize(Number(value))}
+          placeholder="Page size"
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -394,7 +395,6 @@ export function StudentManager({
               type="checkbox"
               checked={allSelected}
               onChange={(event) => toggleSelectAll(event.target.checked)}
-              className="h-4 w-4 rounded border-white/30 bg-transparent text-emerald-400 focus:ring-fuchsia-400/40"
             />
             Select all
           </div>
@@ -418,7 +418,6 @@ export function StudentManager({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelectOne(student.id)}
-                    className="h-4 w-4 rounded border-white/30 bg-transparent text-emerald-400 focus:ring-fuchsia-400/40"
                   />
                   <div>
                     <p className="text-sm text-white/40">#{student.id.slice(0, 8)}</p>
@@ -472,13 +471,12 @@ export function StudentManager({
                   <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
                     Chest: {student.chest_no}
                   </div>
-                  <Select name="team_id" defaultValue={student.team_id}>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <SearchSelect
+                    name="team_id"
+                    defaultValue={student.team_id}
+                    options={teams.map((team) => ({ value: team.id, label: team.name }))}
+                    placeholder="Select team"
+                  />
                   <div className="flex items-center gap-3 md:col-span-3">
                     <Button type="submit" className="flex-1">
                       Save changes
@@ -586,6 +584,6 @@ export function StudentManager({
       </Modal>
     </div>
   );
-}
+});
 
 

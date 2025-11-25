@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { StudentManager } from "@/components/student-manager";
 import {
   createStudent,
@@ -373,13 +373,13 @@ export default async function StudentsPage() {
           className="mt-6 grid gap-4 md:grid-cols-2"
         >
           <Input name="name" placeholder="Student name" required />
-          <Select name="team_id" defaultValue={teams[0]?.id} required>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </Select>
+          <SearchSelect
+            name="team_id"
+            defaultValue={teams[0]?.id}
+            required
+            options={teams.map((team) => ({ value: team.id, label: team.name }))}
+            placeholder="Select team"
+          />
           <Button type="submit" className="md:col-span-2">
             Save Student
           </Button>

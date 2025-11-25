@@ -6,7 +6,8 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
+import { showError, showWarning } from "@/lib/toast";
 
 interface ProgramWithLimit extends Program {
   candidateLimit: number;
@@ -49,6 +50,7 @@ function ProgramRegistrationCard({
   removeAction: (formData: FormData) => Promise<void>;
 }) {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
 
   // Client-side participation limit check
   const checkStudentLimit = (studentId: string): {
@@ -125,11 +127,15 @@ function ProgramRegistrationCard({
       }
       // Check if adding this student would exceed the candidate limit
       if (prev.length >= remainingSlots) {
+        showWarning(`Cannot select more students. Only ${remainingSlots} slot${remainingSlots !== 1 ? 's' : ''} remaining for this program.`);
         return prev;
       }
       // Check participation limits
       const limitCheck = checkStudentLimit(studentId);
       if (!limitCheck.allowed) {
+        const student = availableStudents.find(s => s.id === studentId);
+        const studentName = student ? student.name : 'This student';
+        showError(`${studentName}: ${limitCheck.reason || 'Participation limit reached'}`);
         return prev;
       }
       return [...prev, studentId];
@@ -152,6 +158,27 @@ function ProgramRegistrationCard({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (selectedStudents.length === 0) return;
+
+    // Validate all selected students before submission
+    const invalidStudents: string[] = [];
+    for (const studentId of selectedStudents) {
+      const limitCheck = checkStudentLimit(studentId);
+      if (!limitCheck.allowed) {
+        const student = availableStudents.find(s => s.id === studentId);
+        invalidStudents.push(student ? student.name : studentId);
+      }
+    }
+
+    if (invalidStudents.length > 0) {
+      showError(`Cannot register: ${invalidStudents.join(', ')} - Participation limit reached.`);
+      return;
+    }
+
+    // Check if selection exceeds remaining slots
+    if (selectedStudents.length > remainingSlots) {
+      showWarning(`Cannot register ${selectedStudents.length} students. Only ${remainingSlots} slot${remainingSlots !== 1 ? 's' : ''} remaining.`);
+      return;
+    }
 
     // For group/general programs, register all selected students at once
     if (isGroupOrGeneral) {
@@ -267,7 +294,6 @@ function ProgramRegistrationCard({
                             checked={isSelected}
                             onChange={() => handleStudentToggle(student.id)}
                             disabled={!canSelect}
-                            className="w-4 h-4 rounded border-white/20 bg-white/5 text-fuchsia-400 focus:ring-fuchsia-400 focus:ring-offset-0"
                           />
                           <div className="flex-1">
                             <p className="font-medium text-white">{student.name}</p>
@@ -298,66 +324,111 @@ function ProgramRegistrationCard({
               </div>
             </form>
           ) : (
-            <form action={registerAction} className="mt-4 grid gap-3 md:grid-cols-[2fr_1fr]">
+            <form 
+              action={async (formData: FormData) => {
+                const studentId = formData.get("studentId") as string;
+                if (!studentId) {
+                  showError("Please select a student.");
+                  return;
+                }
+                
+                // Check participation limit before submitting
+                const limitCheck = checkStudentLimit(studentId);
+                if (!limitCheck.allowed) {
+                  const student = availableStudents.find(s => s.id === studentId);
+                  const studentName = student ? student.name : 'This student';
+                  showError(`${studentName}: ${limitCheck.reason || 'Participation limit reached'}`);
+                  return;
+                }
+                
+                // Check if candidate limit is reached
+                if (limitReached) {
+                  showError("Candidate limit reached for this program.");
+                  return;
+                }
+                
+                await registerAction(formData);
+                setSelectedStudentId(""); // Reset selection after successful submission
+              }} 
+              className="mt-4 grid gap-3 md:grid-cols-[2fr_1fr]"
+            >
               <input type="hidden" name="programId" value={program.id} />
-              <Select name="studentId" required defaultValue="">
-                <option value="" disabled>
-                  Select a student
-                </option>
-                  {availableStudents.map((student) => {
-                    // Check participation limit for single programs
-                    const limitCheck = (() => {
-                      if (program.section === "general") return { allowed: true };
-                      const studentRegistrations = registrations.filter((reg) => reg.studentId === student.id);
-                      const programMap = new Map(allPrograms.map((p) => [p.id, p]));
-                      
-                      if (program.section === "single") {
-                        const sameStageRegistrations = studentRegistrations.filter((reg) => {
-                          const regProgram = programMap.get(reg.programId);
-                          return (
-                            regProgram?.section === "single" &&
-                            regProgram?.stage === program.stage &&
-                            reg.programId !== program.id
-                          );
-                        });
-                        const maxCount = 3;
-                        return {
-                          allowed: sameStageRegistrations.length < maxCount,
-                          currentCount: sameStageRegistrations.length,
-                          maxCount,
-                        };
-                      }
-                      
-                      if (program.section === "group") {
-                        const groupRegistrations = studentRegistrations.filter((reg) => {
-                          const regProgram = programMap.get(reg.programId);
-                          return regProgram?.section === "group" && reg.programId !== program.id;
-                        });
-                        const maxCount = 3;
-                        return {
-                          allowed: groupRegistrations.length < maxCount,
-                          currentCount: groupRegistrations.length,
-                          maxCount,
-                        };
-                      }
-                      
-                      return { allowed: true };
-                    })();
+              <SearchSelect
+                name="studentId"
+                required
+                value={selectedStudentId}
+                onValueChange={(value) => {
+                  setSelectedStudentId(value);
+                  if (value) {
+                    // Check participation limit when student is selected
+                    const limitCheck = checkStudentLimit(value);
+                    if (!limitCheck.allowed) {
+                      const student = availableStudents.find(s => s.id === value);
+                      const studentName = student ? student.name : 'This student';
+                      showError(`${studentName}: ${limitCheck.reason || 'Participation limit reached'}`);
+                      setSelectedStudentId(""); // Clear selection
+                    } else if (limitReached) {
+                      showError("Candidate limit reached for this program.");
+                      setSelectedStudentId(""); // Clear selection
+                    }
+                  }
+                }}
+                defaultValue=""
+                placeholder="Select a student"
+                options={availableStudents.map((student) => {
+                  // Check participation limit for single programs
+                  const limitCheck = (() => {
+                    if (program.section === "general") return { allowed: true };
+                    const studentRegistrations = registrations.filter((reg) => reg.studentId === student.id);
+                    const programMap = new Map(allPrograms.map((p) => [p.id, p]));
                     
-                    const stageType = program.section === "single" ? (program.stage ? "on-stage" : "off-stage") : program.section;
-                    const limitText = limitCheck.allowed && limitCheck.currentCount !== undefined
-                      ? ` (${limitCheck.currentCount}/3 ${stageType})`
-                      : !limitCheck.allowed
-                        ? ` - LIMIT REACHED`
-                        : "";
+                    if (program.section === "single") {
+                      const sameStageRegistrations = studentRegistrations.filter((reg) => {
+                        const regProgram = programMap.get(reg.programId);
+                        return (
+                          regProgram?.section === "single" &&
+                          regProgram?.stage === program.stage &&
+                          reg.programId !== program.id
+                        );
+                      });
+                      const maxCount = 3;
+                      return {
+                        allowed: sameStageRegistrations.length < maxCount,
+                        currentCount: sameStageRegistrations.length,
+                        maxCount,
+                      };
+                    }
                     
-                    return (
-                      <option key={student.id} value={student.id} disabled={!limitCheck.allowed}>
-                        {student.name} · {student.chestNumber} · {student.teamName}{limitText}
-                      </option>
-                    );
-                  })}
-              </Select>
+                    if (program.section === "group") {
+                      const groupRegistrations = studentRegistrations.filter((reg) => {
+                        const regProgram = programMap.get(reg.programId);
+                        return regProgram?.section === "group" && reg.programId !== program.id;
+                      });
+                      const maxCount = 3;
+                      return {
+                        allowed: groupRegistrations.length < maxCount,
+                        currentCount: groupRegistrations.length,
+                        maxCount,
+                      };
+                    }
+                    
+                    return { allowed: true };
+                  })();
+                  
+                  const stageType = program.section === "single" ? (program.stage ? "on-stage" : "off-stage") : program.section;
+                  const limitText = limitCheck.allowed && limitCheck.currentCount !== undefined
+                    ? ` (${limitCheck.currentCount}/3 ${stageType})`
+                    : !limitCheck.allowed
+                      ? ` - LIMIT REACHED`
+                      : "";
+                  
+                  return {
+                    value: student.id,
+                    label: `${student.name} · ${student.chestNumber} · ${student.teamName}${limitText}`,
+                    meta: !limitCheck.allowed ? "Limit reached" : undefined,
+                  };
+                })}
+              />
               <Button type="submit" disabled={availableStudents.length === 0}>
                 Register
               </Button>
