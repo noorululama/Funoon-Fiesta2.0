@@ -135,6 +135,22 @@ export async function emitStudentDeleted(studentId: string, teamId: string) {
   });
 }
 
+export async function emitNotificationCreated(notification: {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  programId: string;
+  programName: string;
+  resultId: string;
+  createdAt: string;
+}) {
+  await pusherServer.trigger(CHANNELS.RESULTS, "notification-created", {
+    notification,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 
 
 

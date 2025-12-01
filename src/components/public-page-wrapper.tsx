@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 import { VerticalNavSidebar } from "./vertical-nav-sidebar";
+import { NotificationProvider } from "./notification-provider";
 
 interface PublicPageWrapperProps {
   children: ReactNode;
@@ -20,6 +21,9 @@ export function PublicPageWrapper({ children }: PublicPageWrapperProps) {
     return (
       <div className="min-h-screen bg-[#fffcf5] relative">
         <VerticalNavSidebar />
+        <div className="fixed top-4 right-4 z-50">
+          <NotificationProvider />
+        </div>
         {children}
       </div>
     );
@@ -28,6 +32,9 @@ export function PublicPageWrapper({ children }: PublicPageWrapperProps) {
   // For admin/jury/team pages, use the original dark background
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#3b0764,_#020617_55%)]">
+      <div className="fixed top-4 right-4 z-50">
+        <NotificationProvider />
+      </div>
       {children}
     </div>
   );

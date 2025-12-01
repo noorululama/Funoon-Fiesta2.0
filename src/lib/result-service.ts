@@ -261,6 +261,10 @@ export async function approveResult(resultId: string) {
 
   await updateAssignmentStatus(record.program_id, record.jury_id, "completed");
 
+  // Create notification for all users
+  const { createResultPublishedNotification } = await import("./notification-service");
+  await createResultPublishedNotification(resultId, record.program_id);
+
   // Emit real-time event
   const { emitResultApproved } = await import("./pusher");
   await emitResultApproved(resultId, record.program_id);

@@ -130,3 +130,15 @@ export interface ReplacementRequest {
   reviewedBy?: string;
 }
 
+export interface Notification {
+  id: string;
+  type: "result_published";
+  title: string;
+  message: string;
+  programId: string;
+  programName: string;
+  resultId: string;
+  read: boolean;
+  createdAt: string;
+}
+

@@ -3,6 +3,7 @@ import type {
   AssignedProgram,
   Jury,
   LiveScore,
+  Notification,
   Program,
   ProgramRegistration,
   RegistrationSchedule,
@@ -213,4 +214,26 @@ ReplacementRequestSchema.index(
 export const ReplacementRequestModel =
   (models.ReplacementRequest as Model<ReplacementRequest>) ??
   model<ReplacementRequest>("ReplacementRequest", ReplacementRequestSchema);
+
+const NotificationSchema = new Schema<Notification>(
+  {
+    id: { type: String, required: true, unique: true },
+    type: { type: String, enum: ["result_published"], required: true },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    programId: { type: String, required: true },
+    programName: { type: String, required: true },
+    resultId: { type: String, required: true },
+    read: { type: Boolean, default: false },
+    createdAt: { type: String, required: true },
+  },
+  { timestamps: true },
+);
+
+// Index for efficient querying of unread notifications
+NotificationSchema.index({ read: 1, createdAt: -1 });
+
+export const NotificationModel =
+  (models.Notification as Model<Notification>) ??
+  model<Notification>("Notification", NotificationSchema);
 
