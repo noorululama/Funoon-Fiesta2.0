@@ -7,10 +7,17 @@ async function getResultsData() {
     getPrograms(),
   ]);
 
+  // Sort results by submitted_at descending (newest first)
+  const sortedResults = [...results].sort((a, b) => {
+    const dateA = new Date(a.submitted_at).getTime();
+    const dateB = new Date(b.submitted_at).getTime();
+    return dateB - dateA; // Descending order (newest first)
+  });
+
   const programMap = new Map(programs.map((p) => [p.id, p]));
 
   return {
-    results,
+    results: sortedResults,
     programs,
     programMap,
   };

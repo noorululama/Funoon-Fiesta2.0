@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Medal, ChevronRight, TrendingUp } from "lucide-react";
-import type { Team, Program, ResultRecord, Student } from "@/lib/types";
+import type { Team, Program, ResultRecord, ResultEntry, Student } from "@/lib/types";
 
 interface ScoreboardTableProps {
   teams: Team[];
@@ -159,26 +159,26 @@ function MobileScoreCard({
               </div>
               <div className="flex items-center space-x-3">
                 <div className="flex flex-col items-end gap-1">
-                  {teamResults.map((result, idx) => {
-                    const entry = result.entries.find(
-                      (e) =>
-                        e.team_id === team.id ||
-                        (e.student_id && studentMap.get(e.student_id)?.team_id === team.id),
-                    );
-                    if (!entry) return null;
-                    const position = entry.position;
-                    return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">
-                          {entry.score}
-                        </span>
-                        <span className="text-lg transform hover:scale-110 transition-transform">
-                          {position === 1 && "🥇"}
-                          {position === 2 && "🥈"}
-                          {position === 3 && "🥉"}
-                        </span>
-                      </div>
-                    );
+                  {teamResults.flatMap((result, resultIdx) => {
+                    // Get ALL entries for this team in this result (not just the first one)
+                    return result.entries
+                      .filter(
+                        (e) =>
+                          e.team_id === team.id ||
+                          (e.student_id && studentMap.get(e.student_id)?.team_id === team.id),
+                      )
+                      .map((entry, entryIdx) => (
+                        <div key={`${resultIdx}-${entryIdx}`} className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">
+                            {entry.score}
+                          </span>
+                          <span className="text-lg transform hover:scale-110 transition-transform">
+                            {entry.position === 1 && "🥇"}
+                            {entry.position === 2 && "🥈"}
+                            {entry.position === 3 && "🥉"}
+                          </span>
+                        </div>
+                      ));
                   })}
                 </div>
               </div>
@@ -211,6 +211,25 @@ export function ScoreboardTable({
 
   const getTotalPointsForTeam = (teamId: string): number => {
     return liveScores.get(teamId) ?? 0;
+  };
+
+  const getTotalPenaltyPoints = (teamId: string): number => {
+    let total = 0;
+    results.forEach((result) => {
+      if (result.penalties) {
+        result.penalties.forEach((penalty) => {
+          if (penalty.team_id === teamId) {
+            total += penalty.points;
+          } else if (penalty.student_id) {
+            const student = studentMap.get(penalty.student_id);
+            if (student?.team_id === teamId) {
+              total += penalty.points;
+            }
+          }
+        });
+      }
+    });
+    return total;
   };
 
   const getMedalCount = (teamId: string) => {
@@ -279,6 +298,29 @@ export function ScoreboardTable({
             />
           </motion.div>
         ))}
+      </motion.div>
+
+      {/* Minus Points Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-red-50 rounded-xl shadow-md border border-red-200 p-4"
+      >
+        <h3 className="text-lg font-bold text-red-900 mb-4">MINUS POINTS</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {teams.map((team) => {
+            const penaltyTotal = getTotalPenaltyPoints(team.id);
+            return (
+              <div key={team.id} className="flex justify-between items-center">
+                <span className="font-medium text-gray-900">{team.name}</span>
+                <span className="font-semibold text-red-600">
+                  {penaltyTotal > 0 ? `-${penaltyTotal}` : "-"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </motion.div>
 
       <motion.div
@@ -374,33 +416,34 @@ export function ScoreboardTable({
                     </div>
                   </td>
                   {teams.map((team) => {
-                    const teamResult = programResults.find((r) =>
-                      r.entries.some(
-                        (e) =>
-                          e.team_id === team.id ||
-                          (e.student_id && studentMap.get(e.student_id)?.team_id === team.id),
-                      ),
-                    );
-                    const entry = teamResult?.entries.find(
-                      (e) =>
-                        e.team_id === team.id ||
-                        (e.student_id && studentMap.get(e.student_id)?.team_id === team.id),
-                    );
+                    // Get ALL entries for this team in this program (not just the first one)
+                    const teamEntries: Array<{ entry: ResultEntry; result: ResultRecord }> = [];
+                    programResults.forEach((result) => {
+                      result.entries.forEach((entry) => {
+                        const isTeamEntry = entry.team_id === team.id ||
+                          (entry.student_id && studentMap.get(entry.student_id)?.team_id === team.id);
+                        if (isTeamEntry) {
+                          teamEntries.push({ entry, result });
+                        }
+                      });
+                    });
 
                     return (
                       <td key={team.id} className="px-4 py-3 text-center">
-                        {entry ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="flex items-center justify-center space-x-2">
-                              <span className="font-medium text-gray-900">
-                                {entry.score}
-                              </span>
-                              <span className="text-lg transform hover:scale-110 transition-transform">
-                                {entry.position === 1 && "🥇"}
-                                {entry.position === 2 && "🥈"}
-                                {entry.position === 3 && "🥉"}
-                              </span>
-                            </div>
+                        {teamEntries.length > 0 ? (
+                          <div className="flex flex-col items-center gap-1.5">
+                            {teamEntries.map(({ entry }, idx) => (
+                              <div key={idx} className="flex items-center justify-center space-x-2">
+                                <span className="font-medium text-gray-900">
+                                  {entry.score}
+                                </span>
+                                <span className="text-lg transform hover:scale-110 transition-transform">
+                                  {entry.position === 1 && "🥇"}
+                                  {entry.position === 2 && "🥈"}
+                                  {entry.position === 3 && "🥉"}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <span className="text-gray-400">-</span>
@@ -418,6 +461,17 @@ export function ScoreboardTable({
                   {getTotalPointsForTeam(team.id)}
                 </td>
               ))}
+            </tr>
+            <tr className="bg-red-50 font-semibold">
+              <td className="px-4 py-3 text-gray-900">MINUS POINTS</td>
+              {teams.map((team) => {
+                const penaltyTotal = getTotalPenaltyPoints(team.id);
+                return (
+                  <td key={team.id} className="px-4 py-3 text-center text-red-600">
+                    {penaltyTotal > 0 ? `-${penaltyTotal}` : "-"}
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>

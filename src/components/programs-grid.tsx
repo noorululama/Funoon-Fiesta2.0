@@ -32,10 +32,26 @@ const fadeIn = (direction: string, delay: number) => ({
 export function ProgramsGrid({ programs, results, programMap }: ProgramsGridProps) {
   const [search, setSearch] = useState("");
 
-  // Get unique programs that have results
+  // Get unique programs that have results, sorted by latest result date
   const programsWithResults = useMemo(() => {
     const programIds = new Set(results.map((r) => r.program_id));
-    return programs.filter((p) => programIds.has(p.id));
+    const programsWithResultsList = programs.filter((p) => programIds.has(p.id));
+    
+    // Sort programs by their latest result's submitted_at date (newest first)
+    return programsWithResultsList.sort((a, b) => {
+      const aResults = results.filter((r) => r.program_id === a.id);
+      const bResults = results.filter((r) => r.program_id === b.id);
+      
+      if (aResults.length === 0 && bResults.length === 0) return 0;
+      if (aResults.length === 0) return 1;
+      if (bResults.length === 0) return -1;
+      
+      // Get the most recent result for each program
+      const aLatest = Math.max(...aResults.map((r) => new Date(r.submitted_at).getTime()));
+      const bLatest = Math.max(...bResults.map((r) => new Date(r.submitted_at).getTime()));
+      
+      return bLatest - aLatest; // Descending order (newest first)
+    });
   }, [programs, results]);
 
   const filteredPrograms = useMemo(() => {

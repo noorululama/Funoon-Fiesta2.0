@@ -10,9 +10,16 @@ async function getScoreboardData() {
     getLiveScores(),
   ]);
 
+  // Sort results by submitted_at descending (newest first)
+  const sortedResults = [...results].sort((a, b) => {
+    const dateA = new Date(a.submitted_at).getTime();
+    const dateB = new Date(b.submitted_at).getTime();
+    return dateB - dateA; // Descending order (newest first)
+  });
+
   const scoreMap = new Map(liveScores.map((entry) => [entry.team_id, entry.total_points]));
 
-  return { teams, programs, results, students, liveScores: scoreMap };
+  return { teams, programs, results: sortedResults, students, liveScores: scoreMap };
 }
 
 export default async function ScoreboardPage() {
