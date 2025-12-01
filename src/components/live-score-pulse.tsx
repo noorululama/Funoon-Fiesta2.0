@@ -203,7 +203,7 @@ function DesktopDistributionChart({ teams }: DistributionChartProps) {
         <h4 className="text-lg font-bold text-gray-900">Points Distribution</h4>
         <p className="text-sm text-gray-500">Comparative analysis of team performance</p>
       </div>
-      <div className="flex-1 w-full">
+      <div className="flex-1 w-full min-h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={teams} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -241,7 +241,7 @@ function MobileDistributionChart({ teams }: DistributionChartProps) {
         <h4 className="text-base font-bold text-gray-900">Points Distribution</h4>
         <p className="text-xs text-gray-500">Team performance overview</p>
       </div>
-      <div className="flex-1 w-full">
+      <div className="flex-1 w-full min-h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={teams}

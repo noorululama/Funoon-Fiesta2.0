@@ -43,6 +43,7 @@ interface AddResultFormProps {
   submitLabel?: string;
   mode?: "default" | "jury";
   juryName?: string;
+  defaultJuryId?: string;
 }
 
 const gradeOptions = [
@@ -66,6 +67,7 @@ export function AddResultForm({
   submitLabel = "Submit for Approval",
   mode = "default",
   juryName,
+  defaultJuryId,
 }: AddResultFormProps) {
   const [programId, setProgramId] = useState(programs[0]?.id ?? "");
   const [showRules, setShowRules] = useState(false);
@@ -174,8 +176,9 @@ export function AddResultForm({
 
   const registeredOptions = isSingle ? singleCandidateOptions : teamCandidateOptions;
   const fallbackOptions = isSingle ? studentOptions : teamOptions;
-  const useFallbackOptions = registeredOptions.length === 0 && !isJuryMode;
-  const placementSelectOptions = useFallbackOptions ? fallbackOptions : registeredOptions;
+  // Never use fallback options - always require registered candidates for both admin and jury
+  const useFallbackOptions = false;
+  const placementSelectOptions = registeredOptions;
   const penaltySelectOptions = placementSelectOptions;
 
   // Filter options to exclude already-selected candidates from other positions
@@ -491,18 +494,20 @@ export function AddResultForm({
       {!isJuryMode && (
       <Card>
         <Badge tone="emerald">Step 3 · Submit</Badge>
-        <CardTitle className="mt-4">Assign responsible jury</CardTitle>
+        <CardTitle className="mt-4">Assign responsible jury (Optional)</CardTitle>
         <CardDescription className="mt-2">
-          Once you submit, the record lands in Pending Results for approval.
+          {defaultJuryId 
+            ? "Leave blank to assign to Admin. Once you submit, the record lands in Pending Results for approval."
+            : "Once you submit, the record lands in Pending Results for approval."}
         </CardDescription>
+        {defaultJuryId && <input type="hidden" name="default_jury_id" value={defaultJuryId} />}
         <SearchSelect
           className="mt-6"
           name="jury_id"
-          required
-          defaultValue={juries[0]?.id}
+          defaultValue={defaultJuryId ?? juries[0]?.id}
           disabled={lockProgram}
           options={juries.map((jury) => ({ value: jury.id, label: jury.name }))}
-          placeholder="Select jury"
+          placeholder="Select jury (defaults to Admin if not selected)"
         />
           <Button type="submit" className="mt-4" disabled={!hasEligibleCandidates}>
           {submitLabel}

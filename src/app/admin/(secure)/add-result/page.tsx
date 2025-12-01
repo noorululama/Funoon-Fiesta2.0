@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AddResultForm } from "@/components/forms/add-result-form";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { getApprovedResults, getJuries, getPrograms, getStudents, getTeams } from "@/lib/data";
+import { getApprovedResults, getJuries, getPrograms, getStudents, getTeams, getOrCreateAdminJury } from "@/lib/data";
 import { getProgramRegistrations } from "@/lib/team-data";
 import { ensureRegisteredCandidates } from "@/lib/registration-guard";
 import { submitResultToPending } from "@/lib/result-service";
@@ -43,7 +43,19 @@ async function submitResultAction(formData: FormData) {
   "use server";
   try {
     const programId = String(formData.get("program_id") ?? "");
-    const juryId = String(formData.get("jury_id") ?? "");
+    let juryId = String(formData.get("jury_id") ?? "").trim();
+    
+    // If no jury is selected, default to admin jury
+    if (!juryId) {
+      // Try to get from hidden field first, otherwise create/fetch admin jury
+      const defaultJuryId = String(formData.get("default_jury_id") ?? "").trim();
+      if (defaultJuryId) {
+        juryId = defaultJuryId;
+      } else {
+        const adminJury = await getOrCreateAdminJury();
+        juryId = adminJury.id;
+      }
+    }
 
     // Collect winners and validate
     const winners = [];
@@ -114,13 +126,14 @@ async function submitResultAction(formData: FormData) {
 }
 
 export default async function AddResultPage() {
-  const [programs, students, teams, juries, registrations, approvedResults] = await Promise.all([
+  const [programs, students, teams, juries, registrations, approvedResults, adminJury] = await Promise.all([
     getPrograms(),
     getStudents(),
     getTeams(),
     getJuries(),
     getProgramRegistrations(),
     getApprovedResults(),
+    getOrCreateAdminJury(),
   ]);
 
   // Filter out programs that are already approved/published
@@ -152,6 +165,7 @@ export default async function AddResultPage() {
         registrations={registrations}
         approvedResults={approvedResults}
         action={submitResultAction}
+        defaultJuryId={adminJury.id}
       />
     </div>
   );

@@ -343,6 +343,26 @@ export async function deleteJuryById(id: string) {
   await JuryModel.deleteOne({ id });
 }
 
+export async function getOrCreateAdminJury(): Promise<Jury> {
+  await connectDB();
+  const adminJuryId = "jury-admin";
+  let adminJury = await JuryModel.findOne({ id: adminJuryId }).lean();
+  
+  if (!adminJury) {
+    // Create admin jury if it doesn't exist
+    const newAdminJury: Jury = {
+      id: adminJuryId,
+      name: "Admin",
+      password: "admin@jury",
+      avatar: "/img/jury.webp",
+    };
+    await JuryModel.create(newAdminJury);
+    adminJury = newAdminJury;
+  }
+  
+  return adminJury as Jury;
+}
+
 export async function assignProgramToJury(programId: string, juryId: string) {
   await connectDB();
   
