@@ -6,13 +6,6 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Menu, X } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { LiveScorePulse } from "@/components/live-score-pulse";
@@ -65,57 +58,6 @@ export function HomeRealtime({ teams: initialTeams, liveScores: initialLiveScore
                   priority
                 />
               </div>
-              {/* Hamburger menu with dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="w-10 h-10 flex flex-col justify-center items-center gap-1.5 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#8B4513] focus:ring-offset-2">
-                    <div className="w-6 h-0.5 bg-[#8B4513] rounded transition-all"></div>
-                    <div className="w-6 h-0.5 bg-[#8B4513] rounded transition-all"></div>
-                    <div className="w-6 h-0.5 bg-[#8B4513] rounded transition-all"></div>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="end" 
-                  className="w-56 bg-white border-gray-200 shadow-xl rounded-xl p-2"
-                >
-                  <DropdownMenuItem asChild>
-                    <Link href="/" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-900">
-                      <span>Home</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/results" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-900">
-                      <span>Results</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/scoreboard" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-900">
-                      <span>Scoreboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/participant" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-900">
-                      <span>Find Participant</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-200" />
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/login" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
-                      <span>Admin Login</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/jury/login" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
-                      <span>Jury Login</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/team/login" className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg hover:bg-gray-100 text-[#8B4513] font-medium">
-                      <span>Team Portal</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
             {/* Illustration - Full Width (Mobile) */}
@@ -303,7 +245,7 @@ export function HomeRealtime({ teams: initialTeams, liveScores: initialLiveScore
       {/* Control Room Section */}
       <section className="bg-gradient-to-br from-[#8B4513]/5 to-[#0d7377]/5 py-12 sm:py-16 md:py-20">
         <div className="container mx-auto max-w-7xl px-4 sm:px-5 md:px-8">
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 shadow-lg p-6 sm:p-8 md:p-12">
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 shadow-lg p-6 sm:p-8 md:p-12 mb-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 sm:gap-8">
               <div className="flex-1">
                 <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 mb-3 sm:mb-4 text-xs sm:text-sm">Need help?</Badge>
@@ -313,14 +255,14 @@ export function HomeRealtime({ teams: initialTeams, liveScores: initialLiveScore
                 <p className="text-gray-700 text-base sm:text-lg leading-relaxed max-w-2xl">
                   Contact us for support, inquiries, or assistance with the platform. 
                   Our team is here to help ensure a smooth and enjoyable experience.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
-                <Link href="/admin/login" className="w-full sm:w-auto">
-                  <Button variant="secondary" className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300 w-full sm:w-auto text-sm sm:text-base">
+                  <Link href="/admin/login" className="">
+                  <Button variant="secondary" className="text-sm text-black font-normal">
                     Admin Login
                   </Button>
                 </Link>
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
                 <Link href="/jury/login" className="w-full sm:w-auto">
                   <Button variant="ghost" className="text-gray-700 hover:bg-gray-100 border border-gray-300 w-full sm:w-auto text-sm sm:text-base">
                     Jury Login
