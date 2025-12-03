@@ -4,9 +4,9 @@ import { Search, QrCode, Users, Trophy, Sparkles } from "lucide-react";
 
 export default function ParticipantSearchPage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-[#fffcf5] dark:bg-gray-950">
       {/* Hero Section */}
-      <div className="relative bg-white dark:bg-gray-900 pb-20 pt-10 md:pt-16 overflow-hidden">
+      <div className="relative bg-[#fffcf5] dark:bg-gray-900 pb-20 pt-10 md:pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-30 dark:opacity-5"></div>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-purple-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 

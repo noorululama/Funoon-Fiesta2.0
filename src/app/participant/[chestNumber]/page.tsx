@@ -18,7 +18,7 @@ export default async function ParticipantPage({ params }: ParticipantPageProps) 
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-20 pt-6">
+        <div className="min-h-screen bg-[#fffcf5] dark:bg-gray-950 pb-20 pt-6">
             <div className="container mx-auto px-4 max-w-5xl">
                 <div className="flex items-center justify-between mb-6">
                     <Link href="/participant">

@@ -81,9 +81,9 @@ export function ParticipantProfileDisplay({ profile }: ParticipantProfileProps) 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden"
+        className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col justify-between items-center md:flex-row"
       >
-        <div className="p-6 flex flex-col items-center text-center">
+        <div className="p-6 flex-1 flex flex-col items-center text-center">
           <div className="relative mb-4">
             <Avatar className="h-28 w-28 border-4 border-white dark:border-gray-800 shadow-lg">
               <AvatarImage src={student.avatar} alt={student.name} className="object-cover" />
@@ -120,7 +120,11 @@ export function ParticipantProfileDisplay({ profile }: ParticipantProfileProps) 
             </div>
           </div>
         </div>
+        <div className="flex justify-center pt-4">
+        <QRCodeDisplay chestNumber={student.chest_no} participantName={student.name} />
+      </div>
       </motion.div>
+      
 
       {/* Stats Grid - Mobile Optimized */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -272,10 +276,6 @@ export function ParticipantProfileDisplay({ profile }: ParticipantProfileProps) 
             ))}
           </div>
         )}
-      </div>
-
-      <div className="flex justify-center pt-4">
-        <QRCodeDisplay chestNumber={student.chest_no} participantName={student.name} />
       </div>
     </div>
   );

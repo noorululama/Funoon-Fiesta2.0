@@ -69,9 +69,9 @@ export default function ChatbotPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-white dark:bg-gray-950">
+        <div className="flex flex-col h-screen bg-[#fffcf5] dark:bg-gray-950">
             {/* Header */}
-            <header className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl">
+            <header className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800 bg-white/30 backdrop-blur-xl">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg">
@@ -103,11 +103,10 @@ export default function ChatbotPage() {
                             )}
                             <div className={`flex flex-col gap-2 max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
                                 <div
-                                    className={`rounded-2xl px-5 py-3 shadow-sm ${
-                                        msg.role === "user"
+                                    className={`rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user"
                                             ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
                                             : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                    }`}
+                                        }`}
                                 >
                                     <div className={`prose prose-sm ${msg.role === "user" ? "prose-invert dark:prose" : "dark:prose-invert"} max-w-none`}>
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -144,7 +143,7 @@ export default function ChatbotPage() {
             </div>
 
             {/* Input Area */}
-            <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl bottom-20 md:bottom-0">
+            <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white/30 backdrop-blur-xl backdrop-blur-xl bottom-20 md:bottom-0">
                 <div className="max-w-4xl mx-auto px-4 py-4">
                     <div className="relative">
                         <textarea
@@ -158,7 +157,7 @@ export default function ChatbotPage() {
                             }}
                             placeholder="Ask about results, teams, or students..."
                             rows={1}
-                            className="w-full resize-none bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 rounded-2xl pl-5 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 shadow-sm transition-all max-h-40 overflow-y-auto"
+                            className="w-full resize-none bg-white/50  text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 rounded-2xl pl-5 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 shadow-sm transition-all max-h-40 overflow-y-auto"
                         />
                         <button
                             onClick={sendMessage}
