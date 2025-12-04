@@ -49,38 +49,37 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
     if (!mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm md:p-4">
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]"
+                className="bg-black md:bg-white md:dark:bg-gray-900 w-full h-full md:h-auto md:max-w-md md:rounded-3xl overflow-hidden shadow-2xl relative flex flex-col md:max-h-[90vh]"
             >
                 {/* Header */}
-                <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 shrink-0">
-                    <h3 className="font-semibold text-lg flex items-center gap-2 text-gray-900 dark:text-white">
-                        <Camera className="w-5 h-5 text-purple-600" />
+                <div className="p-4 flex items-center justify-between border-b border-gray-800 md:border-gray-100 md:dark:border-gray-800 shrink-0 bg-black/50 md:bg-transparent absolute top-0 left-0 right-0 z-10 md:static backdrop-blur-md md:backdrop-blur-none text-white md:text-gray-900 md:dark:text-white">
+                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <Camera className="w-5 h-5 text-purple-500 md:text-purple-600" />
                         Scan Participant QR
                     </h3>
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={onClose}
-                        className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="rounded-full hover:bg-white/10 md:hover:bg-gray-100 md:dark:hover:bg-gray-800 text-white md:text-gray-900 md:dark:text-white"
                     >
                         <X className="w-5 h-5" />
                     </Button>
                 </div>
 
                 {/* Scanner Area */}
-                <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[300px]">
+                <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
                     {!error ? (
                         <div className="w-full h-full">
                             <Scanner
                                 onScan={handleScan}
                                 onError={handleError}
                                 components={{
-                                    audio: false, // We handle vibration manually
                                     onOff: false,
                                     torch: true,
                                     zoom: true,
@@ -104,8 +103,8 @@ export function QRScanner({ onScan, onClose }: QRScannerProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 text-center shrink-0 bg-white dark:bg-gray-900">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="p-6 text-center shrink-0 bg-black/50 md:bg-white md:dark:bg-gray-900 absolute bottom-0 left-0 right-0 md:static backdrop-blur-md md:backdrop-blur-none z-10">
+                    <p className="text-sm text-white/80 md:text-gray-500 md:dark:text-gray-400">
                         Point your camera at the participant's QR code badge.
                     </p>
                 </div>
